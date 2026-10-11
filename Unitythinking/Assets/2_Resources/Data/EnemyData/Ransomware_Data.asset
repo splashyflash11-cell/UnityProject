@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3cefc1455f054ad40b09b67936bb328a, type: 3}
+  m_Name: Ransomware_Data
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyData
+  enemyName: 
+  enemyType: 3
+  enemyPrefab: {fileID: 0}
+  maxHealth: 1500
+  moveSpeed: 0.3
+  cpuReward: 500
+  attackDamage: 25
+  isStealth: 0
+  isInvulnerable: 0
+  ramReduction: 0
+  enemySprite:
+  - {fileID: 21300000, guid: 5071e12dcd79bf945af1d41274b46974, type: 3}
+  - {fileID: 21300000, guid: dead3f5a18120e74b9d835656b37c9a5, type: 3}
+  - {fileID: 21300000, guid: 68acb22dff2eeaf4fa86d1096d5266c1, type: 3}
+  - {fileID: 21300000, guid: 07a918e510201274bb4506979988a97b, type: 3}

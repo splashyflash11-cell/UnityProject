@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5ae15ebae1ca02c4181cd812eee93a9b, type: 3}
+  m_Name: TD_FireWall
+  m_EditorClassIdentifier: Assembly-CSharp::TowerData
+  towerName: FireWall
+  attackDamage: 100
+  attackRange: 0
+  attackInterval: 0
+  useCpu: 100
+  useRam: 1
+  projectileSpeed: 0
+  isDebuffTower: 1
+  debuffType: 1
+  debuffValue: 0
+  debuffDuration: 0
