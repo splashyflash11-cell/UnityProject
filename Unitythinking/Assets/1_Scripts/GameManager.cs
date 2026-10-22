@@ -3,9 +3,9 @@ using System.Globalization;
 using UnityEngine;
 using UnityEngine.Serialization;
 
-public class GameManeger : MonoBehaviour
+public class GameManager : MonoBehaviour
 {
-    public static GameManeger Instance { get; private set; }  // 싱글톤
+    public static GameManager Instance { get; private set; }
 
     public static string FormatCpu(long value)
     {
@@ -41,7 +41,7 @@ public class GameManeger : MonoBehaviour
         return (value / divisor).ToString("0.##", CultureInfo.InvariantCulture) + suffix;
     }
     
-    void Awake()
+    private void Awake()
     {
         if (Instance == null)
         {
@@ -53,6 +53,12 @@ public class GameManeger : MonoBehaviour
             Destroy(gameObject);
             return;
         }
+        currentServerHP = defaultServerHP;
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this) Instance = null;
     }
  
 
@@ -73,11 +79,6 @@ public class GameManeger : MonoBehaviour
 
     public int defaultServerHP = 100;
     public int currentServerHP;
-
-    void Start()
-    {
-        currentServerHP = defaultServerHP;
-    }
 
     public void ChangeCpu(int amount)
     {
@@ -129,9 +130,8 @@ public class GameManeger : MonoBehaviour
     
     public void OnClickTowerPlacingButton(int btnID, bool isMainTower)
     {
-        print(btnID);
         int index = btnID;
-        if (index >= 0 && index < normalTowerPrefabs.Length)
+        if (normalTowerPrefabs != null && index >= 0 && index < normalTowerPrefabs.Length && TowerPlacementManager.Instance != null)
         {
             TowerPlacementManager.Instance.StartPlacement(normalTowerPrefabs[index], isMainTower);
         }
@@ -139,14 +139,8 @@ public class GameManeger : MonoBehaviour
 
     public void TakeDamage(int damage)
     {
-        currentServerHP -= damage;
-        if (currentServerHP <= 0)
-        {
-            currentServerHP = 0;
-            print("게임오버");
-            //GameOver();
-        }
-
+        if (damage <= 0 || currentServerHP <= 0) return;
+        currentServerHP = Mathf.Max(0, currentServerHP - damage);
         NotifyResourcesChanged();
     }
 }

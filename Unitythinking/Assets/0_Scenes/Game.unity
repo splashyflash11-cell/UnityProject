@@ -147,7 +147,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 31b089dd6e468a34fa4d7f0e746a12d1, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::GameManeger
+  m_EditorClassIdentifier: Assembly-CSharp::GameManager
 --- !u!4 &50480802
 Transform:
   m_ObjectHideFlags: 0
@@ -278,7 +278,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 50480801}
-        m_TargetAssemblyTypeName: GameManeger, Assembly-CSharp
+        m_TargetAssemblyTypeName: GameManager, Assembly-CSharp
         m_MethodName: OnClickTowerPlacingButton
         m_Mode: 3
         m_Arguments:
@@ -455,7 +455,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 50480801}
-        m_TargetAssemblyTypeName: GameManeger, Assembly-CSharp
+        m_TargetAssemblyTypeName: GameManager, Assembly-CSharp
         m_MethodName: OnClickTowerPlacingButton
         m_Mode: 3
         m_Arguments:
@@ -767,7 +767,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 50480801}
-        m_TargetAssemblyTypeName: GameManeger, Assembly-CSharp
+        m_TargetAssemblyTypeName: GameManager, Assembly-CSharp
         m_MethodName: OnClickTowerPlacingButton
         m_Mode: 3
         m_Arguments:
@@ -936,7 +936,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 50480801}
-        m_TargetAssemblyTypeName: GameManeger, Assembly-CSharp
+        m_TargetAssemblyTypeName: GameManager, Assembly-CSharp
         m_MethodName: OnClickTowerPlacingButton
         m_Mode: 3
         m_Arguments:
@@ -1748,7 +1748,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 50480801}
-        m_TargetAssemblyTypeName: GameManeger, Assembly-CSharp
+        m_TargetAssemblyTypeName: GameManager, Assembly-CSharp
         m_MethodName: OnClickTowerPlacingButton
         m_Mode: 3
         m_Arguments:
@@ -1881,7 +1881,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 50480801}
-        m_TargetAssemblyTypeName: GameManeger, Assembly-CSharp
+        m_TargetAssemblyTypeName: GameManager, Assembly-CSharp
         m_MethodName: OnClickTowerPlacingButton
         m_Mode: 3
         m_Arguments:

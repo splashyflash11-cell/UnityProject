@@ -1,6 +1,5 @@
 using System.Collections;
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
 
 public class EnemySpawner : MonoBehaviour
@@ -12,11 +11,18 @@ public class EnemySpawner : MonoBehaviour
     public float spawnInterval = 2.0f;
 
     private bool isSpawning = false;
+    private WaitForSeconds cachedWait;
+    private float cachedWaitInterval = -1f;
 
     private void Awake()
     {
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this) Instance = null;
     }
 
     public void StartSpawning()
@@ -32,9 +38,18 @@ public class EnemySpawner : MonoBehaviour
     {
         while (isSpawning)
         {
-            yield return new WaitForSeconds(spawnInterval);
+            if (spawnInterval > 0f)
+            {
+                if (!Mathf.Approximately(cachedWaitInterval, spawnInterval))
+                {
+                    cachedWaitInterval = spawnInterval;
+                    cachedWait = new WaitForSeconds(spawnInterval);
+                }
+                yield return cachedWait;
+            }
+            else yield return null;
 
-            if (RandomPathGenerator.Instance != null && RandomPathGenerator.Instance.generatedPaths.Count > 0 && enemyDataList.Length > 0)
+            if (RandomPathGenerator.Instance != null && RandomPathGenerator.Instance.generatedPaths.Count > 0 && enemyDataList != null && enemyDataList.Length > 0)
             {
                 // 1. 길 무작위 선택
                 List<List<Vector2Int>> paths = RandomPathGenerator.Instance.generatedPaths;
@@ -49,8 +64,11 @@ public class EnemySpawner : MonoBehaviour
 
                 if (enemyMovement != null)
                 {
-                    enemyMovement.InitData();
                     enemyMovement.SetupPath(selectedPath);
+                }
+                else
+                {
+                    Destroy(enemyObj);
                 }
             }
         }

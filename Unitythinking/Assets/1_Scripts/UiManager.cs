@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.UI;
 using TMPro;
 
 public class UiManager : MonoBehaviour
@@ -9,7 +8,7 @@ public class UiManager : MonoBehaviour
     [SerializeField] private TextMeshProUGUI mainTowerHealthText;
     [SerializeField] private TextMeshProUGUI maxRamText;
 
-    private GameManeger subscribedGameManager;
+    private GameManager subscribedGameManager;
 
     private void OnEnable()
     {
@@ -31,7 +30,7 @@ public class UiManager : MonoBehaviour
 
     private void SubscribeToGameManager()
     {
-        GameManeger gameManager = GameManeger.Instance;
+        GameManager gameManager = GameManager.Instance;
         if (gameManager == null || subscribedGameManager == gameManager) return;
 
         if (subscribedGameManager != null)
@@ -47,7 +46,7 @@ public class UiManager : MonoBehaviour
         if (subscribedGameManager == null) return;
 
         if (cpuText != null)
-            cpuText.text = GameManeger.FormatCpu(subscribedGameManager.cpu);
+            cpuText.text = GameManager.FormatCpu(subscribedGameManager.cpu);
          
         if (curRamText != null)
             curRamText.text = $"{subscribedGameManager.ram:0.##}GB";
@@ -56,6 +55,8 @@ public class UiManager : MonoBehaviour
             maxRamText.text = $"{subscribedGameManager.maxRam:0.##}GB";
 
         if (mainTowerHealthText != null)
-            mainTowerHealthText.text = $"{100.0f * subscribedGameManager.currentServerHP / subscribedGameManager.defaultServerHP:0.##}%";
+            mainTowerHealthText.text = subscribedGameManager.defaultServerHP > 0
+                ? $"{100.0f * subscribedGameManager.currentServerHP / subscribedGameManager.defaultServerHP:0.##}%"
+                : "0%";
     }
 }

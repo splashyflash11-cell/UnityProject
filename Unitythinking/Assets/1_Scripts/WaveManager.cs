@@ -12,6 +12,8 @@ public class WaveManager : MonoBehaviour
     [Header("웨이브 상태")]
     public int currentWaveIndex = 0;
     public bool isWaveRunning = false;
+    private bool hasReportedCompletion;
+    private readonly Vector2Int[] spawnPositions = new Vector2Int[4];
 
     private void Awake()
     {
@@ -19,21 +21,35 @@ public class WaveManager : MonoBehaviour
         else Destroy(gameObject);
     }
 
-    private void Update()
+    private void OnEnable()
     {
-        StartNextWave();
+        if (Instance != this) return;
+        if (RandomPathGenerator.Instance != null)
+        {
+            RandomPathGenerator.Instance.MainTowerPlaced += StartNextWave;
+            if (RandomPathGenerator.Instance.isMainTowerPlaced) StartNextWave();
+        }
     }
 
+    private void OnDisable()
+    {
+        if (RandomPathGenerator.Instance != null)
+            RandomPathGenerator.Instance.MainTowerPlaced -= StartNextWave;
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this) Instance = null;
+    }
 
     // 웨이브 시작
     public void StartNextWave()
     {
-        if (isWaveRunning || waveData == null) return;
+        if (isWaveRunning || waveData == null || waveData.waves == null) return;
 
         // [수정된 부분] RandomPathGenerator의 isMainTowerPlaced 참조
         if (RandomPathGenerator.Instance == null || !RandomPathGenerator.Instance.isMainTowerPlaced)
         {
-            Debug.LogWarning("메인 타워가 먼저 배치되어야 웨이브를 시작할 수 있습니다!");
             return;
         }
 
@@ -41,31 +57,45 @@ public class WaveManager : MonoBehaviour
         {
             StartCoroutine(SpawnWaveRoutine(waveData.waves[currentWaveIndex]));
         }
-        else
+        else if (!hasReportedCompletion)
         {
-            Debug.Log("모든 웨이브가 종료되었습니다!");
+            hasReportedCompletion = true;
+            GameLog.Info("모든 웨이브가 종료되었습니다!");
         }
     }
 
     private IEnumerator SpawnWaveRoutine(Wave currentWave)
     {
         isWaveRunning = true;
-        Debug.Log($"[{currentWave.waveName}] 시작!");
+        GameLog.Info($"[{currentWave.waveName}] 시작!");
 
-        List<Vector2Int> spawnCells = GetSpawnPositions();
+        if (RandomPathGenerator.Instance == null || RandomPathGenerator.Instance.generatedPaths.Count == 0)
+        {
+            isWaveRunning = false;
+            yield break;
+        }
+        FillSpawnPositions();
+
+        if (currentWave.enemySpawnList == null)
+        {
+            isWaveRunning = false;
+            yield break;
+        }
 
         foreach (EnemySpawnInfo enemyInfo in currentWave.enemySpawnList)
         {
             // 1. 프리팹이 Null(빈칸)인 경우 생성을 건너뛰도록 처리
             if (enemyInfo.enemyPrefab == null)
             {
-                Debug.LogError($"[{enemyInfo.enemyName}] 적 프리팹이 WaveDataSO에 등록되어 있지 않습니다!");
+                GameLog.Error($"[{enemyInfo.enemyName}] 적 프리팹이 WaveDataSO에 등록되어 있지 않습니다!");
                 continue;
             }
 
+            WaitForSeconds wait = new WaitForSeconds(Mathf.Max(0f, enemyInfo.spawnInterval));
+
             for (int i = 0; i < enemyInfo.spawnCount; i++)
             {
-                Vector2Int randomSpawnCell = spawnCells[Random.Range(0, spawnCells.Count)];
+                Vector2Int randomSpawnCell = spawnPositions[Random.Range(0, spawnPositions.Length)];
                 Vector3 spawnWorldPos = GetWorldPosFromCell(randomSpawnCell);
 
                 // 2. 명확하게 웨이브 데이터에 할당된 프리팹만 스폰
@@ -78,22 +108,23 @@ public class WaveManager : MonoBehaviour
 
                 if (enemyMovement != null)
                 {
-                    enemyMovement.InitData();
                     enemyMovement.SetupPath(selectedPath);
                 }
 
 
-                yield return new WaitForSeconds(enemyInfo.spawnInterval);
+                if (enemyInfo.spawnInterval > 0f) yield return wait;
+                else yield return null;
             }
         }
 
         currentWaveIndex++;
         isWaveRunning = false;
+        StartNextWave();
     }
 
-    // 맵의 4개 모서리 좌표 가져오기 (RandomPathGenerator 변수 활용)
-    private List<Vector2Int> GetSpawnPositions()
+    private void FillSpawnPositions()
     {
+        if (RandomPathGenerator.Instance == null) return;
         int mapWidth = RandomPathGenerator.Instance.mapWidth;
         int mapHeight = RandomPathGenerator.Instance.mapHeight;
 
@@ -102,13 +133,10 @@ public class WaveManager : MonoBehaviour
         int minY = -mapHeight / 2;
         int maxY = minY + mapHeight - 1;
 
-        return new List<Vector2Int>
-        {
-            new Vector2Int(minX, minY),
-            new Vector2Int(minX, maxY),
-            new Vector2Int(maxX, minY),
-            new Vector2Int(maxX, maxY)
-        };
+        spawnPositions[0] = new Vector2Int(minX, minY);
+        spawnPositions[1] = new Vector2Int(minX, maxY);
+        spawnPositions[2] = new Vector2Int(maxX, minY);
+        spawnPositions[3] = new Vector2Int(maxX, maxY);
     }
 
     // 2:1 아이소메트릭 좌표 변환 (RandomPathGenerator의 tileWidth 사용)

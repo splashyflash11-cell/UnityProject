@@ -238,7 +238,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 31b089dd6e468a34fa4d7f0e746a12d1, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::GameManeger
+  m_EditorClassIdentifier: Assembly-CSharp::GameManager
   normalTowerPrefabs:
   - {fileID: 2791567397630661186, guid: 5815520f849259a4b91fa480c9b712b9, type: 3}
   - {fileID: 3650345954538118643, guid: 848b10769a5594e4ebd8bf7e0c6327ed, type: 3}

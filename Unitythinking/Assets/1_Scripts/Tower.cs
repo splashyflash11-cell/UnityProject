@@ -14,24 +14,39 @@ public class Tower : MonoBehaviour
     public Transform firePoint;          // 총알이 발사될 위치 (선택 사항, 없으면 타워 위치)
 
     private float attackTimer;
+    [SerializeField, Min(0.01f)] private float targetSearchInterval = 0.1f;
+    private float targetSearchTimer;
     private Transform target;
 
     private SpriteRenderer spriteRenderer;
+    private readonly Collider2D[] targetBuffer = new Collider2D[64];
+    private ContactFilter2D targetFilter;
+    private int enemyLayerMask;
 
     public bool isHacked = false;
 
-    private void Start()
+    private void Awake()
     {
         currentHp = maxHp;
         spriteRenderer = GetComponent<SpriteRenderer>();
+        enemyLayerMask = LayerMask.GetMask("Enemy");
+        targetFilter = new ContactFilter2D();
+        targetFilter.SetLayerMask(enemyLayerMask);
+        targetFilter.useTriggers = true;
         if (spriteRenderer != null)
             spriteRenderer.sortingOrder = (int)-transform.position.y;
+        targetSearchTimer = Random.Range(0f, targetSearchInterval);
     }
+
     private void Update()
     {
         attackTimer += Time.deltaTime;
-
-        FindTarget();
+        targetSearchTimer -= Time.deltaTime;
+        if (targetSearchTimer <= 0f)
+        {
+            targetSearchTimer += targetSearchInterval;
+            FindTarget();
+        }
 
         // 타겟이 존재하고 공격 주기가 되면 발사
         if (target != null)
@@ -64,34 +79,26 @@ public class Tower : MonoBehaviour
             return;
         }
 
-        Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, data.attackRange, LayerMask.GetMask("Enemy"));
-
-
-        foreach (Collider2D hit in hits)
+        int hitCount = Physics2D.OverlapCircle(transform.position, data.attackRange, targetFilter, targetBuffer);
+        float attackRangeSq = data.attackRange * data.attackRange;
+        for (int i = 0; i < hitCount; i++)
         {
+            Collider2D hit = targetBuffer[i];
+            if (hit == null) continue;
             Vector3 diff = hit.transform.position - transform.position;
 
             // 2:1 아이소메트릭 비율 적용
             float scaledY = diff.y * 2.0f;
             float normalizedDistSq = (diff.x * diff.x) + (scaledY * scaledY);
 
-            if (normalizedDistSq <= data.attackRange * data.attackRange)
+            if (normalizedDistSq <= attackRangeSq && normalizedDistSq < minNormalizedDistSq)
             {
-                if (normalizedDistSq < minNormalizedDistSq)
-                {
-                    Enemy enemy = hit.GetComponentInParent<Enemy>();
-                    Tower hackedTower = hit.GetComponentInParent<Tower>();
-                    if (enemy == null && (hackedTower == null || !hackedTower.isHacked))
-                        continue;
-
-                    if (enemy != null && enemy.data != null && enemy.data.isStealth)
-                    {
-                        if (data.debuffType != DebuffType.RADAR)
-                            continue;
-                    }
-                    minNormalizedDistSq = normalizedDistSq;
-                    closestEnemy = enemy != null ? enemy.transform : hackedTower.transform;
-                }
+                Enemy enemy = hit.GetComponentInParent<Enemy>();
+                Tower hackedTower = enemy == null ? hit.GetComponentInParent<Tower>() : null;
+                if (enemy == null && (hackedTower == null || !hackedTower.isHacked)) continue;
+                if (enemy != null && enemy.data != null && enemy.data.isStealth && data.debuffType != DebuffType.RADAR) continue;
+                minNormalizedDistSq = normalizedDistSq;
+                closestEnemy = enemy != null ? enemy.transform : hackedTower.transform;
             }
         }
 
@@ -107,8 +114,7 @@ public class Tower : MonoBehaviour
         Vector3 spawnPos = firePoint != null ? firePoint.position : transform.position;
 
         // 총알 생성
-        GameObject projObj = Instantiate(projectilePrefab, spawnPos, Quaternion.identity);
-        Projectile projectile = projObj.GetComponent<Projectile>();
+        Projectile projectile = Projectile.GetFromPool(projectilePrefab, spawnPos);
 
         if (projectile != null)
         {
@@ -121,7 +127,8 @@ public class Tower : MonoBehaviour
                     data.debuffType,
                     data.debuffValue,
                     data.debuffDuration,
-                    data.projectileSpeed
+                    data.projectileSpeed,
+                    isHacked
                 );
             }
             else
@@ -134,7 +141,8 @@ public class Tower : MonoBehaviour
                     data.debuffType,
                     data.debuffValue,
                     data.debuffDuration,
-                    data.projectileSpeed
+                    data.projectileSpeed,
+                    false
                 );
             }
         }
@@ -145,8 +153,17 @@ public class Tower : MonoBehaviour
         isHacked = true;
         if (spriteRenderer != null)
             spriteRenderer.color = Color.red; // 해킹 시 색상 변경
-        gameObject.layer = LayerMask.NameToLayer("Enemy"); // 해킹된 타워 레이어 변경
+        int enemyLayer = LayerMask.NameToLayer("Enemy");
+        if (enemyLayer >= 0)
+            SetLayerRecursively(transform, enemyLayer);
 
+    }
+
+    private static void SetLayerRecursively(Transform current, int layer)
+    {
+        current.gameObject.layer = layer;
+        for (int i = 0; i < current.childCount; i++)
+            SetLayerRecursively(current.GetChild(i), layer);
     }
 
     public void TakeDamage(int damage)
