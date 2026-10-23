@@ -30,6 +30,7 @@ public class EnemyData : ScriptableObject
     public bool isInvulnerable = false; // 분석 전 무적 여부 (ZeroDay)
     public float ramReduction = 0f;   // RAM 감소량 (Memory Leak Worm)
     public bool hacking = false; // 타워 해킹 여부 (APTBoss)
+    public bool infecting = false; // 타워 감염 여부 (Ransomware)
 
     [Header("스프라이트")]
     public Sprite[] enemySprite = new Sprite[4];

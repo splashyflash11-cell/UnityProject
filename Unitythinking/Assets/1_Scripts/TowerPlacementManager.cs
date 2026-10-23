@@ -20,7 +20,7 @@ public class TowerPlacementManager : MonoBehaviour
     private bool isPlacing = false;
     private bool isPlacingMainTower = false; // 현재 메인 타워 배치 중인지 여부
     bool isWall = false; // 현재 선택한 타워가 벽인지 여부
-    List<Vector2> towerPositions = new List<Vector2>();
+    HashSet<Vector2Int> towerPositions = new HashSet<Vector2Int>();
     public GameObject mainTower;
 
     private RangeIndicator previewRange;   // 배치 미리보기 사거리
@@ -57,8 +57,8 @@ public class TowerPlacementManager : MonoBehaviour
             else
             {
                 // 일반 타워: 길(Path)을 제외하고 맵 내부인 곳만 배치 가능
-                if (GameManeger.Instance.cpu < currentTowerPrefab.GetComponent<Tower>().data.useCpu ||
-                    GameManeger.Instance.ram + currentTowerPrefab.GetComponent<Tower>().data.useRam > GameManeger.Instance.maxRam)
+                if (GameManager.Instance.cpu < currentTowerPrefab.GetComponent<Tower>().data.useCpu ||
+                    GameManager.Instance.ram + currentTowerPrefab.GetComponent<Tower>().data.useRam > GameManager.Instance.maxRam)
                 {
                     isValid = false; // CPU 부족 시 배치 불가
                 }
@@ -90,12 +90,12 @@ public class TowerPlacementManager : MonoBehaviour
                 if (placedTowerComp != null) placedTowerComp.cell = cellIndex;   // 판매/제거 시 셀 해제용
 
                 TowerData towerData = currentTowerPrefab.GetComponent<Tower>().data;
-                GameManeger.Instance.ChangeCpu(-towerData.useCpu); // CPU 차감
+                GameManager.Instance.ChangeCpu(-towerData.useCpu); // CPU 차감
                 towerPositions.Add(cellIndex); // 배치된 타워 위치 저장
 
                 if (!isPlacingMainTower)
                 {
-                    GameManeger.Instance.SetRam(GameManeger.Instance.ram + towerData.useRam);
+                    GameManager.Instance.SetRam(GameManager.Instance.ram + towerData.useRam);
                 }
                 else
                 {

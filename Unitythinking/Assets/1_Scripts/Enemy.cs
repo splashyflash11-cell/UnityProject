@@ -192,6 +192,25 @@ public class Enemy : MonoBehaviour
     {
         isDead = true;
 
+        if (data.infecting)
+        {
+            // Ransomware가 죽으면 타워 잠금
+            Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, 20, LayerMask.GetMask("tower"));
+            if (hits.Count() == 0)
+            {
+                return;
+            }
+            Tower selectedTower = hits[Random.Range(0, hits.Length)].gameObject.GetComponent<Tower>();
+
+            if (selectedTower.isInfected)
+            {
+                Debug.Log($"{data.enemyName}이(가) {selectedTower.data.towerName} 을 감염시키려 했지만 이미 감염된 상태입니다.");
+                return;
+            }
+            selectedTower.Infect();
+            Debug.Log($"{data.enemyName}이(가) {selectedTower.data.towerName} 을 감염시켰습니다!");
+        }
+
         // 적이 죽었을 때의 처리 (예: 점수 증가, 아이템 드롭, 재화 획득 등)
         Debug.Log($"{data.enemyName}이(가) 사망했습니다.");
 

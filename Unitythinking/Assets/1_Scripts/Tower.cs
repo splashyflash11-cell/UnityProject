@@ -22,6 +22,7 @@ public class Tower : MonoBehaviour
     private SpriteRenderer spriteRenderer;
 
     public bool isHacked = false;
+    public bool isInfected = false;
 
     // ── 배치 정보 / 통계 ──
     [HideInInspector] public Vector2Int cell;   // 설치된 셀 (TowerPlacementManager 가 설정)
@@ -51,7 +52,10 @@ public class Tower : MonoBehaviour
     {
         attackTimer += Time.deltaTime;
 
-        FindTarget();
+        if (!isInfected)
+        {
+            FindTarget();
+        }
 
         // 타겟이 존재하고 공격 주기가 되면 발사
         if (target != null)
@@ -183,6 +187,14 @@ public class Tower : MonoBehaviour
         gameObject.layer = LayerMask.NameToLayer("Enemy"); // 해킹된 타워 레이어 변경
 
         CreateWarningIcon();
+    }
+    // ───────────── 감염 ─────────────
+    public void Infect()
+    {
+        if (isInfected) return;
+        isInfected = true;
+        if (spriteRenderer != null)
+            spriteRenderer.color = Color.cyan; // 감염 시 색상 변경
     }
 
     private void CreateWarningIcon()
