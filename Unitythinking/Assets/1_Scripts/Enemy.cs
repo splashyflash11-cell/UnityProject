@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -13,28 +14,26 @@ public class Enemy : MonoBehaviour
 
     private float currentHealth;
     private float moveSpeed;
-    private readonly List<Vector3> waypoints = new List<Vector3>();
+    private bool isInvulnerable;   // 인스턴스별 무적 상태 (data 에셋은 건드리지 않음)
+    private bool isDead;
+    private List<Vector3> waypoints = new List<Vector3>();
     private int currentWaypointIndex = 0;
     private bool isInitialized = false;
-    private bool isInvulnerable;
-    private bool isDead;
 
     float hackingTimer;
 
     Vector3 targetPosition;
 
     SpriteRenderer spriteRenderer;
-    private readonly Collider2D[] towerBuffer = new Collider2D[64];
-    private ContactFilter2D towerFilter;
-    private int towerLayerMask;
+
+    // 정보 패널(도감)용 읽기 전용 값
+    public float CurrentHealth => currentHealth;
+    public float MoveSpeed => moveSpeed;
+    public bool IsInvulnerable => isInvulnerable;
 
     private void Awake()
     {
         spriteRenderer = GetComponent<SpriteRenderer>();
-        towerLayerMask = LayerMask.GetMask("tower");
-        towerFilter = new ContactFilter2D();
-        towerFilter.SetLayerMask(towerLayerMask);
-        towerFilter.useTriggers = true;
         if (data != null)
         {
             InitData();
@@ -43,30 +42,24 @@ public class Enemy : MonoBehaviour
 
     public void InitData()
     {
-        if (data == null) return;
         currentHealth = data.maxHealth;
         moveSpeed = data.moveSpeed;
         isInvulnerable = data.isInvulnerable;
         isDead = false;
-        isInitialized = false;
-        currentWaypointIndex = 0;
-        waypoints.Clear();
-        if (hitText != null) hitText.gameObject.SetActive(false);
-        if (healthSlider != null && data.maxHealth > 0f) healthSlider.value = 1f;
+        hitText.gameObject.SetActive(false); // 초기에는 히트 텍스트를 비활성화
         if (data.isStealth)
         {
-            if (spriteRenderer != null) spriteRenderer.color = new Color(1f, 1f, 1f, 0.5f);
+            spriteRenderer.color = new Color(1f, 1f, 1f, 0.5f); // 반투명 처리
         }
         else
         {
-            if (spriteRenderer != null) spriteRenderer.color = Color.white;
+            spriteRenderer.color = Color.white; // 원래 색상으로 복원
         }
         hackingTimer = 0;
     }
 
     public void SetupPath(List<Vector2Int> cellPath)
     {
-        if (cellPath == null || RandomPathGenerator.Instance == null) return;
         waypoints.Clear();
         foreach (Vector2Int cell in cellPath)
         {
@@ -85,14 +78,14 @@ public class Enemy : MonoBehaviour
 
     private void Update()
     {
-        if (!isInitialized || isDead || data == null || currentWaypointIndex >= waypoints.Count)
+        if (!isInitialized || waypoints == null || currentWaypointIndex >= waypoints.Count)
             return;
 
         targetPosition = waypoints[currentWaypointIndex];
         transform.position = Vector3.MoveTowards(transform.position, targetPosition, moveSpeed * Time.deltaTime);
-        if (spriteRenderer != null) spriteRenderer.sortingOrder = (int)-transform.position.y;
+        spriteRenderer.sortingOrder = (int)-transform.position.y;
 
-        if ((transform.position - targetPosition).sqrMagnitude < 0.0025f)
+        if (Vector3.Distance(transform.position, targetPosition) < 0.05f)
         {
             currentWaypointIndex++;
 
@@ -104,13 +97,13 @@ public class Enemy : MonoBehaviour
             {
                 targetPosition = waypoints[currentWaypointIndex];
                 if (targetPosition.x < transform.position.x && targetPosition.y > transform.position.y)
-                SetDirectionSprite(0);
+                    GetComponent<SpriteRenderer>().sprite = data.enemySprite[0]; // 좌상
                 else if (targetPosition.x > transform.position.x && targetPosition.y > transform.position.y)
-                SetDirectionSprite(1);
+                    GetComponent<SpriteRenderer>().sprite = data.enemySprite[1]; // 우상
                 else if (targetPosition.x > transform.position.x && targetPosition.y < transform.position.y)
-                SetDirectionSprite(2);
+                    GetComponent<SpriteRenderer>().sprite = data.enemySprite[2]; // 우하
                 else if (targetPosition.x < transform.position.x && targetPosition.y < transform.position.y)
-                SetDirectionSprite(3);
+                    GetComponent<SpriteRenderer>().sprite = data.enemySprite[3]; // 좌하
             }
         }
 
@@ -121,87 +114,74 @@ public class Enemy : MonoBehaviour
             if (hackingTimer >= 3)
             {
                 hackingTimer = 0f;
-                int hitCount = Physics2D.OverlapCircle(transform.position, 20f, towerFilter, towerBuffer);
-                int towerCount = 0;
-                for (int i = 0; i < hitCount; i++)
-                    if (towerBuffer[i] != null && towerBuffer[i].GetComponentInParent<Tower>() != null)
-                        towerCount++;
-                if (towerCount == 0) return;
-
-                int selectedIndex = Random.Range(0, towerCount);
-                Tower selectedTower = null;
-                for (int i = 0; i < hitCount; i++)
+                Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, 20, LayerMask.GetMask("tower"));
+                if (hits.Count() == 0)
                 {
-                    Collider2D hit = towerBuffer[i];
-                    Tower candidate = hit != null ? hit.GetComponentInParent<Tower>() : null;
-                    if (candidate == null) continue;
-                    if (selectedIndex-- == 0)
-                    {
-                        selectedTower = candidate;
-                        break;
-                    }
+                    return;
                 }
-                if (selectedTower == null || selectedTower.data == null) return;
+                Tower selectedTower = hits[Random.Range(0, hits.Length)].gameObject.GetComponent<Tower>();
+
                 if (selectedTower.isHacked)
                 {
-                    GameLog.Info($"{data.enemyName}이(가) {selectedTower.data.towerName} 을 해킹하려 했지만 이미 해킹된 상태입니다.");
+                    Debug.Log($"{data.enemyName}이(가) {selectedTower.data.towerName} 을 해킹하려 했지만 이미 해킹된 상태입니다.");
                     return;
                 }
                 selectedTower.Hacking();
-                GameLog.Info($"{data.enemyName}이(가) {selectedTower.data.towerName} 을 해킹했습니다!");
+                Debug.Log($"{data.enemyName}이(가) {selectedTower.data.towerName} 을 해킹했습니다!");
             }
         }
-    }
 
-    private void SetDirectionSprite(int index)
-    {
-        if (spriteRenderer != null && data.enemySprite != null && index < data.enemySprite.Length && data.enemySprite[index] != null)
-            spriteRenderer.sprite = data.enemySprite[index];
     }
 
     private void OnReachMainTower()
     {
-        if (isDead) return;
-        isDead = true;
-        GameLog.Info($"{data.enemyName}이(가) 메인프레임에 도달했습니다!");
-        if (GameManager.Instance != null) GameManager.Instance.TakeDamage(data.attackDamage);
+        Debug.Log($"{data.enemyName}이(가) 메인프레임에 도달했습니다!");
+        GameManager.Instance.TakeDamage(data.attackDamage);
         Destroy(gameObject);
     }
 
-    public void TakeDamage(float damage, bool isArmorReduce = false)
+    public void TakeDamage(float damage, bool isArmorReduce = false, Tower attacker = null)
     {
-        if (isDead || data == null || damage <= 0f) return;
+        if (isDead) return;   // 같은 프레임에 여러 발이 맞아도 보상/처치가 중복되지 않게
+
         if (isInvulnerable)
         {
             if (isArmorReduce)
             {
-                GameLog.Info($"{data.enemyName}은(는) 무적이 해제됩니다.");
+                Debug.Log($"{data.enemyName}은(는) 무적이 해제됩니다.");
                 isInvulnerable = false;
                 return;
             }
             else
             {
-                GameLog.Info($"{data.enemyName}은(는) 무적 상태입니다. 피해를 입지 않았습니다.");
+                Debug.Log($"{data.enemyName}은(는) 무적 상태입니다. 피해를 입지 않았습니다.");
                 return;
             }
         }
+
+        float dealt = Mathf.Min(damage, currentHealth);   // 남은 체력 이상은 누적 피해에 넣지 않음
         currentHealth -= damage;
-        GameLog.Info($"{data.enemyName}이(가) {damage}만큼 피해를 입었습니다. 남은 체력: {currentHealth}");
+        if (attacker != null) attacker.AddDamage(dealt);
+
+        Debug.Log($"{data.enemyName}이(가) {damage}만큼 피해를 입었습니다. 남은 체력: {currentHealth}");
+
         if (currentHealth <= 0)
         {
             currentHealth = 0;
+            healthSlider.value = 0f;
+            if (attacker != null) attacker.AddKill();
             Die();
+            return;
         }
-        if (healthSlider != null && data.maxHealth > 0f)
-            healthSlider.value = Mathf.Clamp01(currentHealth / data.maxHealth);
+
+        healthSlider.value = currentHealth / data.maxHealth;    // 체력바 업데이트
     }
 
     public void ShowHitText(float damage)
     {
-        if (hitText == null || isDead) return;
         hitText.gameObject.SetActive(true);
         hitText.text = $"{damage}";
-        Invoke(nameof(HideHitText), 0.5f);
+        Invoke("HideHitText", 0.5f);
     }
 
     void HideHitText()
@@ -210,12 +190,12 @@ public class Enemy : MonoBehaviour
     }
     void Die()
     {
-        if (isDead) return;
         isDead = true;
-        // 적이 죽었을 때의 처리 (예: 점수 증가, 아이템 드롭, 재화 획득 등)
-        GameLog.Info($"{data.enemyName}이(가) 사망했습니다.");
 
-        if (GameManager.Instance != null) GameManager.Instance.ChangeCpu(data.cpuReward);
+        // 적이 죽었을 때의 처리 (예: 점수 증가, 아이템 드롭, 재화 획득 등)
+        Debug.Log($"{data.enemyName}이(가) 사망했습니다.");
+
+        GameManager.Instance.ChangeCpu(data.cpuReward); // 적을 처치하면 보상으로 CPU를 증가시킴
 
 
         Destroy(gameObject);

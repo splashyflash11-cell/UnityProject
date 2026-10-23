@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Pool;
 
 public class TowerPlacementManager : MonoBehaviour
 {
@@ -21,26 +20,19 @@ public class TowerPlacementManager : MonoBehaviour
     private bool isPlacing = false;
     private bool isPlacingMainTower = false; // 현재 메인 타워 배치 중인지 여부
     bool isWall = false; // 현재 선택한 타워가 벽인지 여부
-    private readonly HashSet<Vector2Int> towerPositions = new HashSet<Vector2Int>();
-    private readonly Dictionary<GameObject, ObjectPool<GameObject>> previewPools = new Dictionary<GameObject, ObjectPool<GameObject>>();
-    private Camera mainCamera;
-    private TowerData selectedTowerData;
+    List<Vector2> towerPositions = new List<Vector2>();
     public GameObject mainTower;
+
+    private RangeIndicator previewRange;   // 배치 미리보기 사거리
+
+    // 선택 시스템에서 사용
     public bool IsPlacing => isPlacing;
-    public int LastPlacementFrame { get; private set; } = -1;
+    public int LastPlacementFrame { get; private set; } = -1;   // 설치 클릭이 선택 클릭으로 겹치는 것 방지
+
     private void Awake()
     {
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
-        mainCamera = Camera.main;
-    }
-
-    private void OnDestroy()
-    {
-        if (Instance == this) Instance = null;
-        CancelPlacement();
-        foreach (ObjectPool<GameObject> pool in previewPools.Values) pool.Clear();
-        previewPools.Clear();
     }
 
     private void Update()
@@ -65,15 +57,14 @@ public class TowerPlacementManager : MonoBehaviour
             else
             {
                 // 일반 타워: 길(Path)을 제외하고 맵 내부인 곳만 배치 가능
-                if (GameManager.Instance == null || selectedTowerData == null ||
-                    GameManager.Instance.cpu < selectedTowerData.useCpu ||
-                    GameManager.Instance.ram + selectedTowerData.useRam > GameManager.Instance.maxRam)
+                if (GameManeger.Instance.cpu < currentTowerPrefab.GetComponent<Tower>().data.useCpu ||
+                    GameManeger.Instance.ram + currentTowerPrefab.GetComponent<Tower>().data.useRam > GameManeger.Instance.maxRam)
                 {
                     isValid = false; // CPU 부족 시 배치 불가
                 }
                 else
                 {
-                    isValid = RandomPathGenerator.Instance != null && RandomPathGenerator.Instance.CanPlaceNormalTower(cellIndex, isWall, towerPositions);
+                    isValid = RandomPathGenerator.Instance.CanPlaceNormalTower(cellIndex, isWall, towerPositions);
                 }
             }
 
@@ -83,24 +74,34 @@ public class TowerPlacementManager : MonoBehaviour
                 previewRenderer.color = isValid ? new Color(0, 1, 0, 0.5f) : new Color(1, 0, 0, 0.5f);
             }
 
+            // 사거리 미리보기
+            if (previewRange != null)
+            {
+                TowerData previewData = currentTowerPrefab.GetComponent<Tower>().data;
+                float range = previewData != null ? previewData.attackRange : 0f;
+                previewRange.Show(snappedPos, range, isValid ? new Color(0.2f, 1f, 0.2f, 0.8f) : new Color(1f, 0.2f, 0.2f, 0.8f));
+            }
+
             // 클릭 배치 처리
             if (Input.GetMouseButtonDown(0) && isValid)
             {
                 GameObject placedTower = Instantiate(currentTowerPrefab, snappedPos, Quaternion.identity);
-                TowerData towerData = selectedTowerData;
-                if (towerData == null || GameManager.Instance == null)
-                GameManager.Instance.ChangeCpu(-towerData.useCpu); // CPU 차감
+                Tower placedTowerComp = placedTower.GetComponent<Tower>();
+                if (placedTowerComp != null) placedTowerComp.cell = cellIndex;   // 판매/제거 시 셀 해제용
+
+                TowerData towerData = currentTowerPrefab.GetComponent<Tower>().data;
+                GameManeger.Instance.ChangeCpu(-towerData.useCpu); // CPU 차감
                 towerPositions.Add(cellIndex); // 배치된 타워 위치 저장
 
                 if (!isPlacingMainTower)
                 {
-                    GameManager.Instance.SetRam(GameManager.Instance.ram + towerData.useRam);
+                    GameManeger.Instance.SetRam(GameManeger.Instance.ram + towerData.useRam);
                 }
                 else
                 {
                     // 메인 타워를 놓았다면 모서리 1~3곳에서 길을 생성
+                    RandomPathGenerator.Instance.OnPlaceMainTower(cellIndex);
                     mainTower = placedTower; // 메인 타워 참조 저장
-                    if (RandomPathGenerator.Instance != null) RandomPathGenerator.Instance.OnPlaceMainTower(cellIndex);
                 }
 
                 CancelPlacement();
@@ -111,6 +112,12 @@ public class TowerPlacementManager : MonoBehaviour
         {
             CancelPlacement();
         }
+    }
+
+    // 판매 / 해킹 타워 제거 시 해당 셀을 다시 배치 가능하게 만든다
+    public void ReleaseCell(Vector2Int cell)
+    {
+        towerPositions.Remove(cell);
     }
 
     // 마우스 월드 좌표 -> 셀 인덱스(cellX, cellY) 계산
@@ -158,27 +165,21 @@ public class TowerPlacementManager : MonoBehaviour
 
     public void StartPlacement(GameObject towerPrefab, bool isMainTower = false)
     {
-        if (mainCamera == null) mainCamera = Camera.main;
-        if (mainCamera == null) return;
         // 메인 타워가 이미 설치되어 있으면 추가 배치 불가
         if (isMainTower && RandomPathGenerator.Instance != null && RandomPathGenerator.Instance.isMainTowerPlaced)
         {
-            GameLog.Info("Main tower already placed. Cannot start another main tower placement.");
+            Debug.Log("Main tower already placed. Cannot start another main tower placement.");
             return;
         }
 
         if (isPlacing) CancelPlacement();
 
-        if (towerPrefab == null) return;
-        Tower tower = towerPrefab.GetComponent<Tower>();
-        if (tower == null || tower.data == null) return;
         currentTowerPrefab = towerPrefab;
-        selectedTowerData = tower.data;
         isPlacing = true;
         isWall = towerPrefab.CompareTag("Wall"); // 벽 타워인지 여부 확인
         isPlacingMainTower = isMainTower; // 메인 타워 설치 여부 저장
 
-        previewObject = GetPreview(towerPrefab);
+        previewObject = Instantiate(towerPrefab);
         previewRenderer = previewObject.GetComponent<SpriteRenderer>();
 
         Tower t = previewObject.GetComponent<Tower>();
@@ -186,14 +187,15 @@ public class TowerPlacementManager : MonoBehaviour
 
         Collider2D col = previewObject.GetComponent<Collider2D>();
         if (col != null) col.enabled = false;
+
+        if (previewRange == null) previewRange = RangeIndicator.Create("PlacementRange");
     }
 
     private Vector3 GetMouseWorldPosition()
     {
-        if (mainCamera == null) return Vector3.zero;
         Vector3 mousePos = Input.mousePosition;
-        mousePos.z = -mainCamera.transform.position.z;
-        Vector3 worldPos = mainCamera.ScreenToWorldPoint(mousePos);
+        mousePos.z = -Camera.main.transform.position.z;
+        Vector3 worldPos = Camera.main.ScreenToWorldPoint(mousePos);
         worldPos.z = 0f;
         return worldPos;
     }
@@ -206,41 +208,16 @@ public class TowerPlacementManager : MonoBehaviour
 
     public void CancelPlacement()
     {
-        LastPlacementFrame = Time.frameCount;   // 설치 클릭이 선택 클릭으로 겹치는 것 방지
+        LastPlacementFrame = Time.frameCount;   // 설치/취소 클릭이 선택 클릭으로 겹치는 것 방지
 
         if (previewObject != null)
         {
-            if (currentTowerPrefab != null && previewPools.TryGetValue(currentTowerPrefab, out ObjectPool<GameObject> pool))
-                pool.Release(previewObject);
-            else
-                Destroy(previewObject);
+            Destroy(previewObject);
         }
+        if (previewRange != null) previewRange.Hide();
+
         isPlacing = false;
         isPlacingMainTower = false; // 추가
         currentTowerPrefab = null;
-        selectedTowerData = null;
-        previewObject = null;
-        previewRenderer = null;
-    }
-
-    private GameObject GetPreview(GameObject prefab)
-    {
-        if (!previewPools.TryGetValue(prefab, out ObjectPool<GameObject> pool))
-        {
-            ObjectPool<GameObject> createdPool = null;
-            createdPool = new ObjectPool<GameObject>(
-                () =>
-                {
-                    GameObject instance = Instantiate(prefab, transform);
-                    instance.SetActive(false);
-                    return instance;
-                },
-                instance => instance.SetActive(true),
-                instance => instance.SetActive(false),
-                instance => Destroy(instance), true, 1, 4);
-            pool = createdPool;
-            previewPools.Add(prefab, pool);
-        }
-        return pool.Get();
     }
 }

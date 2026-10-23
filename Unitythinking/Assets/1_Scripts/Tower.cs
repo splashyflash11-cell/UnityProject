@@ -13,40 +13,45 @@ public class Tower : MonoBehaviour
     public GameObject projectilePrefab; // 총알 프리팹
     public Transform firePoint;          // 총알이 발사될 위치 (선택 사항, 없으면 타워 위치)
 
+    [Header("해킹 경고 아이콘")]
+    [SerializeField] private float warningIconOffset = 0.2f; // 스프라이트 위쪽 여백
+
     private float attackTimer;
-    [SerializeField, Min(0.01f)] private float targetSearchInterval = 0.1f;
-    private float targetSearchTimer;
     private Transform target;
 
     private SpriteRenderer spriteRenderer;
-    private readonly Collider2D[] targetBuffer = new Collider2D[64];
-    private ContactFilter2D targetFilter;
-    private int enemyLayerMask;
 
     public bool isHacked = false;
 
-    private void Awake()
+    // ── 배치 정보 / 통계 ──
+    [HideInInspector] public Vector2Int cell;   // 설치된 셀 (TowerPlacementManager 가 설정)
+    private float placedTime;
+    private bool released;                      // 환급/제거 처리가 끝났는지
+
+    public float TotalDamage { get; private set; }
+    public int KillCount { get; private set; }
+    public float AliveTime => Time.time - placedTime;
+
+    public bool IsMainTower =>
+        TowerPlacementManager.Instance != null && TowerPlacementManager.Instance.mainTower == gameObject;
+
+    // 판매 가능: 해킹되지 않은 일반 타워
+    public bool CanSell => !isHacked && !IsMainTower && data != null;
+
+    private void Start()
     {
         currentHp = maxHp;
+        placedTime = Time.time;
         spriteRenderer = GetComponent<SpriteRenderer>();
-        enemyLayerMask = LayerMask.GetMask("Enemy");
-        targetFilter = new ContactFilter2D();
-        targetFilter.SetLayerMask(enemyLayerMask);
-        targetFilter.useTriggers = true;
         if (spriteRenderer != null)
             spriteRenderer.sortingOrder = (int)-transform.position.y;
-        targetSearchTimer = Random.Range(0f, targetSearchInterval);
     }
 
     private void Update()
     {
         attackTimer += Time.deltaTime;
-        targetSearchTimer -= Time.deltaTime;
-        if (targetSearchTimer <= 0f)
-        {
-            targetSearchTimer += targetSearchInterval;
-            FindTarget();
-        }
+
+        FindTarget();
 
         // 타겟이 존재하고 공격 주기가 되면 발사
         if (target != null)
@@ -79,26 +84,33 @@ public class Tower : MonoBehaviour
             return;
         }
 
-        int hitCount = Physics2D.OverlapCircle(transform.position, data.attackRange, targetFilter, targetBuffer);
-        float attackRangeSq = data.attackRange * data.attackRange;
-        for (int i = 0; i < hitCount; i++)
+        Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, data.attackRange, LayerMask.GetMask("Enemy"));
+
+        foreach (Collider2D hit in hits)
         {
-            Collider2D hit = targetBuffer[i];
-            if (hit == null) continue;
             Vector3 diff = hit.transform.position - transform.position;
 
             // 2:1 아이소메트릭 비율 적용
             float scaledY = diff.y * 2.0f;
             float normalizedDistSq = (diff.x * diff.x) + (scaledY * scaledY);
 
-            if (normalizedDistSq <= attackRangeSq && normalizedDistSq < minNormalizedDistSq)
+            if (normalizedDistSq <= data.attackRange * data.attackRange)
             {
-                Enemy enemy = hit.GetComponentInParent<Enemy>();
-                Tower hackedTower = enemy == null ? hit.GetComponentInParent<Tower>() : null;
-                if (enemy == null && (hackedTower == null || !hackedTower.isHacked)) continue;
-                if (enemy != null && enemy.data != null && enemy.data.isStealth && data.debuffType != DebuffType.RADAR) continue;
-                minNormalizedDistSq = normalizedDistSq;
-                closestEnemy = enemy != null ? enemy.transform : hackedTower.transform;
+                if (normalizedDistSq < minNormalizedDistSq)
+                {
+                    Enemy enemy = hit.GetComponentInParent<Enemy>();
+                    Tower hackedTower = hit.GetComponentInParent<Tower>();
+                    if (enemy == null && (hackedTower == null || !hackedTower.isHacked))
+                        continue;
+
+                    if (enemy != null && enemy.data != null && enemy.data.isStealth)
+                    {
+                        if (data.debuffType != DebuffType.RADAR)
+                            continue;
+                    }
+                    minNormalizedDistSq = normalizedDistSq;
+                    closestEnemy = enemy != null ? enemy.transform : hackedTower.transform;
+                }
             }
         }
 
@@ -114,7 +126,8 @@ public class Tower : MonoBehaviour
         Vector3 spawnPos = firePoint != null ? firePoint.position : transform.position;
 
         // 총알 생성
-        Projectile projectile = Projectile.GetFromPool(projectilePrefab, spawnPos);
+        GameObject projObj = Instantiate(projectilePrefab, spawnPos, Quaternion.identity);
+        Projectile projectile = projObj.GetComponent<Projectile>();
 
         if (projectile != null)
         {
@@ -128,7 +141,7 @@ public class Tower : MonoBehaviour
                     data.debuffValue,
                     data.debuffDuration,
                     data.projectileSpeed,
-                    isHacked
+                    this
                 );
             }
             else
@@ -142,39 +155,93 @@ public class Tower : MonoBehaviour
                     data.debuffValue,
                     data.debuffDuration,
                     data.projectileSpeed,
-                    false
+                    this
                 );
             }
         }
     }
 
+    // ───────────── 통계 ─────────────
+    public void AddDamage(float amount)
+    {
+        if (amount > 0f) TotalDamage += amount;
+    }
+
+    public void AddKill()
+    {
+        KillCount++;
+    }
+
+    // ───────────── 해킹 ─────────────
     public void Hacking()
     {
+        if (isHacked) return;
+
         isHacked = true;
         if (spriteRenderer != null)
             spriteRenderer.color = Color.red; // 해킹 시 색상 변경
-        int enemyLayer = LayerMask.NameToLayer("Enemy");
-        if (enemyLayer >= 0)
-            SetLayerRecursively(transform, enemyLayer);
+        gameObject.layer = LayerMask.NameToLayer("Enemy"); // 해킹된 타워 레이어 변경
 
+        CreateWarningIcon();
     }
 
-    private static void SetLayerRecursively(Transform current, int layer)
+    private void CreateWarningIcon()
     {
-        current.gameObject.layer = layer;
-        for (int i = 0; i < current.childCount; i++)
-            SetLayerRecursively(current.GetChild(i), layer);
+        float topY = spriteRenderer != null ? spriteRenderer.bounds.max.y : transform.position.y + 0.5f;
+        Vector3 pos = new Vector3(transform.position.x, topY + warningIconOffset, 0f);
+        HackWarningIcon.Create(transform, pos);
     }
 
-    public void TakeDamage(int damage)
+    // 해킹된 타워만 피해를 받는다. 공격으로 파괴되면 cost 전액 CPU 환급 + 사용 중이던 RAM 반환
+    public void TakeDamage(int damage, Tower attacker = null)
     {
-        if (!isHacked || damage <= 0)
+        if (!isHacked || damage <= 0 || released)
             return;
 
+        int dealt = Mathf.Min(damage, Mathf.Max(currentHp, 0));
         currentHp -= damage;
+
+        if (attacker != null) attacker.AddDamage(dealt);
+
         if (currentHp <= 0)
-            Destroy(gameObject);
+        {
+            currentHp = 0;
+            if (attacker != null) attacker.AddKill();
+            Release(data != null ? data.useCpu : 0);
+        }
     }
+
+    // ───────────── 판매 ─────────────
+    public int GetSellValue(float ratio)
+    {
+        return data != null ? Mathf.RoundToInt(data.useCpu * ratio) : 0;
+    }
+
+    public void Sell(float refundRatio)
+    {
+        if (!CanSell) return;
+        Release(GetSellValue(refundRatio));
+    }
+
+    // CPU 환급 + RAM 반환 + 설치 셀 해제 + 오브젝트 제거 (중복 호출 방지)
+    private void Release(int cpuRefund)
+    {
+        if (released) return;
+        released = true;
+
+        GameManager gm = GameManager.Instance;
+        if (gm != null && data != null)
+        {
+            gm.ChangeCpu(cpuRefund);
+            gm.SetRam(Mathf.Max(0f, gm.ram - data.useRam));
+        }
+
+        if (TowerPlacementManager.Instance != null)
+            TowerPlacementManager.Instance.ReleaseCell(cell);
+
+        Destroy(gameObject);
+    }
+
     private void OnDrawGizmos()
     {
         if (data == null) return;
@@ -185,6 +252,4 @@ public class Tower : MonoBehaviour
         Gizmos.DrawWireSphere(Vector3.zero, data.attackRange);
         Gizmos.matrix = oldMatrix;
     }
-
-
 }
