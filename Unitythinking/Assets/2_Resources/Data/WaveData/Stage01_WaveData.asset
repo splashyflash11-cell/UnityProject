@@ -13,6 +13,12 @@ MonoBehaviour:
   m_Name: Stage01_WaveData
   m_EditorClassIdentifier: Assembly-CSharp::WaveDataS0
   waves:
+  - waveName: ex
+    enemySpawnList:
+    - enemyName: Ransomware
+      enemyPrefab: {fileID: 7051123224168577051, guid: 52e040b7e8b447849961d087c220c495, type: 3}
+      spawnCount: 1
+      spawnInterval: 4
   - waveName: Wave 1
     enemySpawnList:
     - enemyName: Ddos

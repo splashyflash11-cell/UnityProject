@@ -188,34 +188,41 @@ public class Enemy : MonoBehaviour
     {
         hitText.gameObject.SetActive(false);
     }
+    // 사망 위치 반경 안의 감염 가능한 타워 중 infectCount 개를 무작위로 감염
+    private void InfectTowers()
+    {
+        Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, data.infectRadius, LayerMask.GetMask("tower"));
+
+        List<Tower> candidates = new List<Tower>();
+        foreach (Collider2D hit in hits)
+        {
+            Tower t = hit.GetComponentInParent<Tower>();
+            if (t != null && t.CanInfect && !candidates.Contains(t))
+                candidates.Add(t);
+        }
+
+        int count = Mathf.Min(data.infectCount, candidates.Count);
+        for (int i = 0; i < count; i++)
+        {
+            int idx = Random.Range(0, candidates.Count);
+            candidates[idx].Infect(data.decryptCost);
+            candidates.RemoveAt(idx);
+        }
+
+        Debug.Log($"{data.enemyName}이(가) 타워 {count}개를 감염시켰습니다!");
+    }
+
     void Die()
     {
         isDead = true;
-
-        if (data.infecting)
-        {
-            // Ransomware가 죽으면 타워 잠금
-            Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, 20, LayerMask.GetMask("tower"));
-            if (hits.Count() == 0)
-            {
-                return;
-            }
-            Tower selectedTower = hits[Random.Range(0, hits.Length)].gameObject.GetComponent<Tower>();
-
-            if (selectedTower.isInfected)
-            {
-                Debug.Log($"{data.enemyName}이(가) {selectedTower.data.towerName} 을 감염시키려 했지만 이미 감염된 상태입니다.");
-                return;
-            }
-            selectedTower.Infect();
-            Debug.Log($"{data.enemyName}이(가) {selectedTower.data.towerName} 을 감염시켰습니다!");
-        }
 
         // 적이 죽었을 때의 처리 (예: 점수 증가, 아이템 드롭, 재화 획득 등)
         Debug.Log($"{data.enemyName}이(가) 사망했습니다.");
 
         GameManager.Instance.ChangeCpu(data.cpuReward); // 적을 처치하면 보상으로 CPU를 증가시킴
 
+        if (data.enemyType == EnemyType.Ransomware)
+            InfectTowers();   // 랜섬웨어는 처치되면 주변 타워를 감염시킨다
 
         Destroy(gameObject);
 

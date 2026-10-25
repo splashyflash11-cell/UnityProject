@@ -22,12 +22,17 @@ public class Tower : MonoBehaviour
     private SpriteRenderer spriteRenderer;
 
     public bool isHacked = false;
-    public bool isInfected = false;
 
     // ── 배치 정보 / 통계 ──
     [HideInInspector] public Vector2Int cell;   // 설치된 셀 (TowerPlacementManager 가 설정)
     private float placedTime;
     private bool released;                      // 환급/제거 처리가 끝났는지
+
+    // ── 랜섬웨어 감염 ──
+    public bool isLocked { get; private set; }    // 감염(잠김) 상태: 복호화 전까지 공격 불가
+    public int DecryptCost { get; private set; }  // 복호화에 필요한 CPU
+    private Color baseColor = Color.white;
+    private GameObject lockIcon;
 
     public float TotalDamage { get; private set; }
     public int KillCount { get; private set; }
@@ -36,8 +41,11 @@ public class Tower : MonoBehaviour
     public bool IsMainTower =>
         TowerPlacementManager.Instance != null && TowerPlacementManager.Instance.mainTower == gameObject;
 
-    // 판매 가능: 해킹되지 않은 일반 타워
-    public bool CanSell => !isHacked && !IsMainTower && data != null;
+    // 판매 가능: 해킹/감염되지 않은 일반 타워
+    public bool CanSell => !isHacked && !isLocked && !IsMainTower && data != null;
+
+    // 감염 가능: 이미 감염/해킹되지 않은 일반 타워
+    public bool CanInfect => !isLocked && !isHacked && !IsMainTower;
 
     private void Start()
     {
@@ -45,17 +53,25 @@ public class Tower : MonoBehaviour
         placedTime = Time.time;
         spriteRenderer = GetComponent<SpriteRenderer>();
         if (spriteRenderer != null)
+        {
+            baseColor = spriteRenderer.color;
             spriteRenderer.sortingOrder = (int)-transform.position.y;
+        }
     }
 
     private void Update()
     {
+        // 랜섬웨어에 감염되면 복호화 전까지 공격하지 않는다
+        if (isLocked)
+        {
+            attackTimer = 0f;
+            target = null;
+            return;
+        }
+
         attackTimer += Time.deltaTime;
 
-        if (!isInfected)
-        {
-            FindTarget();
-        }
+        FindTarget();
 
         // 타겟이 존재하고 공격 주기가 되면 발사
         if (target != null)
@@ -176,25 +192,64 @@ public class Tower : MonoBehaviour
         KillCount++;
     }
 
+    // ───────────── 랜섬웨어 감염 / 복호화 ─────────────
+    public void Infect(int decryptCost)
+    {
+        if (!CanInfect) return;
+
+        isLocked = true;
+        DecryptCost = decryptCost;
+        attackTimer = 0f;
+        target = null;
+
+        if (spriteRenderer != null)
+            spriteRenderer.color = new Color(0.7f, 0.4f, 1f, 1f);   // 보라색 틴트
+
+        CreateLockIcon();
+    }
+
+    // 복호화 비용(CPU)을 지불하면 잠금 해제. RAM은 감염 중에도 계속 점유되므로 건드리지 않는다.
+    public bool TryDecrypt()
+    {
+        if (!isLocked) return false;
+
+        GameManager gm = GameManager.Instance;
+        if (gm == null || gm.cpu < DecryptCost) return false;
+
+        gm.ChangeCpu(-DecryptCost);
+        RemoveLock();
+        return true;
+    }
+
+    private void RemoveLock()
+    {
+        isLocked = false;
+        attackTimer = 0f;
+        if (spriteRenderer != null) spriteRenderer.color = baseColor;
+        if (lockIcon != null) Destroy(lockIcon);
+        lockIcon = null;
+    }
+
+    private void CreateLockIcon()
+    {
+        float topY = spriteRenderer != null ? spriteRenderer.bounds.max.y : transform.position.y + 0.5f;
+        Vector3 pos = new Vector3(transform.position.x, topY + warningIconOffset, 0f);
+        HackWarningIcon icon = HackWarningIcon.Create(transform, pos, "LockIcon", "LOCK", new Color(0.75f, 0.5f, 1f), 2.5f, false);
+        lockIcon = icon.gameObject;
+    }
+
     // ───────────── 해킹 ─────────────
     public void Hacking()
     {
         if (isHacked) return;
 
+        if (isLocked) RemoveLock();   // 감염 상태에서 해킹되면 해킹 상태가 우선
         isHacked = true;
         if (spriteRenderer != null)
             spriteRenderer.color = Color.red; // 해킹 시 색상 변경
         gameObject.layer = LayerMask.NameToLayer("Enemy"); // 해킹된 타워 레이어 변경
 
         CreateWarningIcon();
-    }
-    // ───────────── 감염 ─────────────
-    public void Infect()
-    {
-        if (isInfected) return;
-        isInfected = true;
-        if (spriteRenderer != null)
-            spriteRenderer.color = Color.cyan; // 감염 시 색상 변경
     }
 
     private void CreateWarningIcon()

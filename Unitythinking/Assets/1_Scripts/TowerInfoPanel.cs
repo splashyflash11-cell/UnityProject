@@ -18,8 +18,15 @@ public class TowerInfoPanel : MonoBehaviour
     [SerializeField] private TextMeshProUGUI sellButtonText;
     [SerializeField] private Outline borderOutline;          // 해킹 시 붉게 깜빡일 테두리
 
+    [Header("랜섬웨어 감염 UI (비워 두면 건너뜀)")]
+    [SerializeField] private Image lockIconImage;             // 잠금 아이콘
+    [SerializeField] private Button decryptButton;
+    [SerializeField] private TextMeshProUGUI decryptButtonText;
+
     [Header("오른쪽 아래 여백")]
     [SerializeField] private Vector2 margin = new Vector2(20f, 20f);
+
+    private static readonly Color LockColor = new Color(0.75f, 0.5f, 1f);
 
     private Tower tower;
     private Enemy enemy;
@@ -45,6 +52,7 @@ public class TowerInfoPanel : MonoBehaviour
 
         if (borderOutline != null) borderOutline.enabled = false;
         if (sellButton != null) sellButton.onClick.AddListener(OnSellClicked);
+        if (decryptButton != null) decryptButton.onClick.AddListener(OnDecryptClicked);
     }
 
     public void ShowTower(Tower t, bool isPinned)
@@ -67,7 +75,8 @@ public class TowerInfoPanel : MonoBehaviour
     {
         tower = null;
         enemy = null;
-        UpdateBorder(false);
+        UpdateBorder(false, Color.clear);
+        ClearLockUI();
         if (gameObject.activeSelf) gameObject.SetActive(false);
     }
 
@@ -104,13 +113,15 @@ public class TowerInfoPanel : MonoBehaviour
 
         SetIcon(tower.GetComponent<SpriteRenderer>());
 
+        bool locked = tower.isLocked;
+
         string n = d != null ? d.towerName : tower.name;
-        SetText(nameText, hacked ? $"{n} [Hacked]" : n);
-        if (nameText != null) nameText.color = hacked ? Color.red : Color.white;
+        SetText(nameText, hacked ? $"{n} [Hacked]" : locked ? $"{n} [Infected]" : n);
+        if (nameText != null) nameText.color = hacked ? Color.red : locked ? LockColor : Color.white;
 
         if (d == null)
         {
-            SetText(infoText, "No Data");
+            SetText(infoText, "NoData");
         }
         else
         {
@@ -119,19 +130,21 @@ public class TowerInfoPanel : MonoBehaviour
             float interval = hacked ? d.attackInterval * 2f : d.attackInterval;
 
             string text =
-                $"AD : {dmg} | " +
-                $"AS : {interval:0.##}s\n" +
-                $"Range : {d.attackRange:0.##}\n" +
-                $"Cost : {d.useCpu} | " +
-                $"RAM : {d.useRam:0.##}GB";
+                $"AD  {dmg} | " +
+                $"AS  {interval:0.##}s\n" +
+                $"Range  {d.attackRange:0.##}\n" +
+                $"Cost  {d.useCpu} | " +
+                $"Usage  {d.useRam:0.##}GB";
 
             if (d.isDebuffTower)
                 text += $"\nAbility  {DebuffLabel(d.debuffType)} {d.debuffValue:0.##} / {d.debuffDuration:0.##}s";
             else if (d.debuffType == DebuffType.RADAR)
                 text += "\nAbility  Stealth Detection";
 
+            if (locked) text += "\nStatus  Infected · Attack Disabled";
+
             int sec = (int)tower.AliveTime;
-            text += $"\nKill  {tower.KillCount} | Dmg  {tower.TotalDamage:0} | Time  {sec / 60:00}:{sec % 60:00}";
+            text += $"\nKill : {tower.KillCount} | Dmg  {tower.TotalDamage:0} | Time : {sec / 60:00}:{sec % 60:00}";
 
             SetText(infoText, text);
         }
@@ -142,9 +155,11 @@ public class TowerInfoPanel : MonoBehaviour
 
         // 안내 문구
         string hint = "";
-        if (!pinned) hint = "Click to pin";
+        if (!pinned) hint = locked ? "Infected · Click to pin" : "Click to pin";
         else if (hacked && d != null)
-            hint = $"Hacked · Destroy to  CPU +{d.useCpu}, RAM -{d.useRam:0.##}GB";
+            hint = $"Hacked · Attack to CPU +{d.useCpu} | RAM -{d.useRam:0.##}GB";
+        else if (locked)
+            hint = $"Infected · Decryption cost CPU {tower.DecryptCost}";
         SetText(hintText, hint);
 
         // 판매 버튼 (고정 상태 + 해킹되지 않은 일반 타워만)
@@ -159,7 +174,26 @@ public class TowerInfoPanel : MonoBehaviour
             }
         }
 
-        UpdateBorder(hacked);
+        // 복호화 버튼 (고정 상태 + 감염된 타워만, CPU가 모자라면 비활성화)
+        bool showDecrypt = pinned && locked;
+        if (decryptButton != null)
+        {
+            if (decryptButton.gameObject.activeSelf != showDecrypt) decryptButton.gameObject.SetActive(showDecrypt);
+            if (showDecrypt)
+            {
+                bool affordable = GameManager.Instance != null && GameManager.Instance.cpu >= tower.DecryptCost;
+                decryptButton.interactable = affordable;
+                SetText(decryptButtonText, affordable
+                    ? $"Dec CPU -{tower.DecryptCost}"
+                    : $"Dec CPU -{tower.DecryptCost} (Insufficient)");
+            }
+        }
+
+        // 잠금 아이콘
+        if (lockIconImage != null && lockIconImage.gameObject.activeSelf != locked)
+            lockIconImage.gameObject.SetActive(locked);
+
+        UpdateBorder(hacked || locked, hacked ? Color.red : LockColor);
     }
 
     // ───────────── 적 도감 ─────────────
@@ -177,7 +211,8 @@ public class TowerInfoPanel : MonoBehaviour
             if (hpSlider != null) hpSlider.value = 0f;
             SetText(hintText, "");
             if (sellButton != null && sellButton.gameObject.activeSelf) sellButton.gameObject.SetActive(false);
-            UpdateBorder(false);
+            UpdateBorder(false, Color.clear);
+            ClearLockUI();
             return;
         }
 
@@ -185,13 +220,13 @@ public class TowerInfoPanel : MonoBehaviour
         if (nameText != null) nameText.color = new Color(1f, 0.6f, 0.2f);
 
         string text =
-            $"Speed : {enemy.MoveSpeed:0.##}\n" +
-            $"Reward : +{d.cpuReward}\n" +
+            $"Speed  {enemy.MoveSpeed:0.##}\n" +
+            $"Reward +{d.cpuReward}\n" +
             $"Damage  {d.attackDamage}";
 
         if (d.isStealth) text += "\n\nStealth · Only Radar Towers can attack";
         if (d.isInvulnerable)
-            text += enemy.IsInvulnerable ? "\n\nInvulnerable · Reduced by Armor Reduction attacks" : "\n\nInvulnerable removed";
+            text += enemy.IsInvulnerable ? "\n\nInvulnerable · Can be defeated with reduced defense attacks" : "\n\nInvulnerable · Unactivated";
         if (d.hacking) text += "\n\nHacking · Periodically hacks towers";
         if (d.ramReduction > 0f) text += $"\n\nRAM Reduction {d.ramReduction:0.##}GB";
 
@@ -204,10 +239,24 @@ public class TowerInfoPanel : MonoBehaviour
         SetText(hintText, pinned ? "" : "Click to pin");
 
         if (sellButton != null && sellButton.gameObject.activeSelf) sellButton.gameObject.SetActive(false);
-        UpdateBorder(false);
+        UpdateBorder(false, Color.clear);
+        ClearLockUI();
     }
 
     // ───────────── 공통 ─────────────
+    private void OnDecryptClicked()
+    {
+        if (tower != null && pinned && tower.isLocked)
+            tower.TryDecrypt();
+    }
+
+    // 타워가 아닌 대상을 보여줄 때 / 닫을 때 감염 UI 숨김
+    private void ClearLockUI()
+    {
+        if (lockIconImage != null && lockIconImage.gameObject.activeSelf) lockIconImage.gameObject.SetActive(false);
+        if (decryptButton != null && decryptButton.gameObject.activeSelf) decryptButton.gameObject.SetActive(false);
+    }
+
     private void OnSellClicked()
     {
         if (TowerSelectionManager.Instance != null)
@@ -215,7 +264,7 @@ public class TowerInfoPanel : MonoBehaviour
     }
 
     // 해킹 상태면 테두리(없으면 배경색)를 붉게 깜빡인다
-    private void UpdateBorder(bool alert)
+    private void UpdateBorder(bool alert, Color color)
     {
         float blink = Mathf.PingPong(Time.unscaledTime * 3f, 1f);
 
@@ -223,11 +272,11 @@ public class TowerInfoPanel : MonoBehaviour
         {
             borderOutline.enabled = alert;
             if (alert)
-                borderOutline.effectColor = Color.Lerp(new Color(1f, 0f, 0f, 0.2f), new Color(1f, 0.1f, 0.1f, 1f), blink);
+                borderOutline.effectColor = Color.Lerp(new Color(color.r, color.g, color.b, 0.2f), new Color(color.r, color.g, color.b, 1f), blink);
         }
         else if (background != null)
         {
-            Color alertColor = new Color(0.8f, 0.05f, 0.05f, backgroundBase.a);
+            Color alertColor = new Color(color.r * 0.8f, color.g * 0.8f, color.b * 0.8f, backgroundBase.a);
             background.color = alert ? Color.Lerp(backgroundBase, alertColor, blink) : backgroundBase;
         }
     }

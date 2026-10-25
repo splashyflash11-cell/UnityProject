@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: TD_HoneyPot
   m_EditorClassIdentifier: Assembly-CSharp::TowerData
   towerName: HoneyPot
-  attackDamage: 300
-  attackRange: 2
+  attackDamage: 100
+  attackRange: 7
   attackInterval: 3
   useCpu: 500
   useRam: 3

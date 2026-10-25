@@ -15,10 +15,10 @@ MonoBehaviour:
   towerName: DPI
   attackDamage: 500
   attackRange: 5
-  attackInterval: 5
+  attackInterval: 3.5
   useCpu: 500
   useRam: 3
-  projectileSpeed: 5
+  projectileSpeed: 7.5
   isDebuffTower: 1
   debuffType: 4
   debuffValue: 0

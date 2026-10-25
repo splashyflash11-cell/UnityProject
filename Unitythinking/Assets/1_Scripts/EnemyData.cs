@@ -30,7 +30,11 @@ public class EnemyData : ScriptableObject
     public bool isInvulnerable = false; // 분석 전 무적 여부 (ZeroDay)
     public float ramReduction = 0f;   // RAM 감소량 (Memory Leak Worm)
     public bool hacking = false; // 타워 해킹 여부 (APTBoss)
-    public bool infecting = false; // 타워 감염 여부 (Ransomware)
+
+    [Header("랜섬웨어 설정 (enemyType 이 Ransomware 일 때만 사용)")]
+    public float infectRadius = 6f;   // 사망 위치 기준 감염 반경 (월드 단위)
+    public int infectCount = 2;       // 한 번에 감염시키는 타워 수
+    public int decryptCost = 100;     // 복호화에 필요한 CPU (고정 금액)
 
     [Header("스프라이트")]
     public Sprite[] enemySprite = new Sprite[4];
