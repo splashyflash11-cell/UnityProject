@@ -93,6 +93,9 @@ public class TowerPlacementManager : MonoBehaviour
                 GameManager.Instance.ChangeCpu(-towerData.useCpu); // CPU 차감
                 towerPositions.Add(cellIndex); // 배치된 타워 위치 저장
 
+                HoneyPot pot = placedTower.GetComponent<HoneyPot>();
+                if (pot != null) RandomPathGenerator.Instance.RegisterHoneyPot(cellIndex, pot);
+
                 if (!isPlacingMainTower)
                 {
                     GameManager.Instance.SetRam(GameManager.Instance.ram + towerData.useRam);
@@ -161,6 +164,11 @@ public class TowerPlacementManager : MonoBehaviour
         float H = tileWidth * 0.5f;
         Collider2D hit = Physics2D.OverlapBox(position, new Vector2(tileWidth * 0.5f, H * 0.5f), 0f, unplaceableLayer);
         return hit == null;
+    }
+
+    public bool IsCellOccupied(Vector2Int cell)
+    {
+        return towerPositions.Contains(cell);
     }
 
     public void StartPlacement(GameObject towerPrefab, bool isMainTower = false)

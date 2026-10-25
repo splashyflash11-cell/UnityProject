@@ -78,8 +78,13 @@ public class Enemy : MonoBehaviour
 
     private void Update()
     {
-        if (!isInitialized || waypoints == null || currentWaypointIndex >= waypoints.Count)
+        // 도착(웨이포인트 소진) 시 처리
+        if (isInitialized && currentWaypointIndex >= waypoints.Count)
+        {
+            if (lureTarget != null) { AttackHoneyPot(); }
             return;
+        }
+        if (!isInitialized || waypoints == null) return;
 
         targetPosition = waypoints[currentWaypointIndex];
         transform.position = Vector3.MoveTowards(transform.position, targetPosition, moveSpeed * Time.deltaTime);
@@ -132,7 +137,21 @@ public class Enemy : MonoBehaviour
         }
 
     }
-
+    void AttackHoneyPot()
+    {
+        lureAttackTimer += Time.deltaTime;
+        if (lureAttackTimer >= 1f)
+        {
+            lureAttackTimer = 0f;
+            lureTarget.TakeDamage(data.attackDamage);
+        }
+        if (lureTarget == null)   // 허니팟 파괴됨 -> 본진으로 복귀
+        {
+            Vector2Int here = RandomPathGenerator.Instance.GetCellFromWorldPos(transform.position);
+            var route = RandomPathGenerator.Instance.FindRoute(here, RandomPathGenerator.Instance.mainTowerCell);
+            if (route != null) ApplyRoute(route);
+        }
+    }
     private void OnReachMainTower()
     {
         Debug.Log($"{data.enemyName}이(가) 메인프레임에 도달했습니다!");
@@ -210,6 +229,29 @@ public class Enemy : MonoBehaviour
         }
 
         Debug.Log($"{data.enemyName}이(가) 타워 {count}개를 감염시켰습니다!");
+    }
+
+    HoneyPot lureTarget;
+    float lureAttackTimer;
+
+    public void Lure(HoneyPot pot)
+    {
+        if (pot == null || lureTarget != null || !isInitialized) return;   // 이미 유인 중이면 무시
+        int idx = Mathf.Clamp(currentWaypointIndex, 0, waypoints.Count - 1);
+        Vector2Int start = RandomPathGenerator.Instance.GetCellFromWorldPos(waypoints[idx]);
+        var route = RandomPathGenerator.Instance.FindRoute(start, pot.cell);
+        if (route == null) return;
+
+        lureTarget = pot;
+        ApplyRoute(route);
+    }
+
+    void ApplyRoute(List<Vector2Int> route)
+    {
+        waypoints.Clear();
+        foreach (Vector2Int c in route)
+            waypoints.Add(RandomPathGenerator.Instance.GetWorldPosFromCell(c));
+        currentWaypointIndex = 0;
     }
 
     void Die()

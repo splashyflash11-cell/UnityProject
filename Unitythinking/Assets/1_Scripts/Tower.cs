@@ -149,6 +149,8 @@ public class Tower : MonoBehaviour
         GameObject projObj = Instantiate(projectilePrefab, spawnPos, Quaternion.identity);
         Projectile projectile = projObj.GetComponent<Projectile>();
 
+        projectile.lureSource = GetComponent<HoneyPot>();
+
         if (projectile != null)
         {
             if (isHacked)

@@ -18,30 +18,22 @@ public class RandomPathGenerator : MonoBehaviour
 
     public Vector2Int mainTowerCell;
     public bool isMainTowerPlaced = false;
+    public event System.Action MainTowerPlaced;
     public HashSet<Vector2Int> pathCells = new HashSet<Vector2Int>();
-    
 
-    // [추가] 개별 경로(시작점 -> 본진)들의 목록 관리
+    // 개별 경로(시작점 -> 본진)들의 목록 관리
     public List<List<Vector2Int>> generatedPaths = new List<List<Vector2Int>>();
-    private readonly int[] edgeBuffer = { 0, 1, 2, 3 };
-    private readonly Vector2Int[] neighborBuffer = new Vector2Int[4];
-    private readonly HashSet<Vector2Int> visitedCells = new HashSet<Vector2Int>();
-    private Vector3Int[] tilePositionBuffer = new Vector3Int[0];
-    private TileBase[] tileBuffer = new TileBase[0];
-    private static readonly Vector2Int[] Directions = { Vector2Int.up, Vector2Int.down, Vector2Int.left, Vector2Int.right };
 
-    private void Awake()
+    // 설치된 허니팟 목록 (셀 -> 허니팟)
+    public Dictionary<Vector2Int, HoneyPot> honeyPots = new Dictionary<Vector2Int, HoneyPot>();
+
+    static readonly Vector2Int[] Dirs = { Vector2Int.up, Vector2Int.down, Vector2Int.left, Vector2Int.right };
+
+    private void Awake() 
     {
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
     }
-
-    private void OnDestroy()
-    {
-        if (Instance == this) Instance = null;
-    }
-
-    public event System.Action MainTowerPlaced;
 
     public void OnPlaceMainTower(Vector2Int towerCell)
     {
@@ -50,6 +42,7 @@ public class RandomPathGenerator : MonoBehaviour
 
         pathCells.Clear();
         generatedPaths.Clear();
+        honeyPots.Clear();
         if (pathTilemap != null) pathTilemap.ClearAllTiles();
 
         List<Vector2Int> spawnPoints = GetRandomEdgeSpawns();
@@ -65,7 +58,11 @@ public class RandomPathGenerator : MonoBehaviour
 
         DrawPathOnTilemap();
 
-        // [추가] 경로 생성이 완료되면 적 스폰 시작
+        // 경로 생성이 완료되면 적 스폰 시작
+        if (EnemySpawner.Instance != null)
+        {
+            EnemySpawner.Instance.StartSpawning();
+        }
         MainTowerPlaced?.Invoke();
     }
 
@@ -76,12 +73,14 @@ public class RandomPathGenerator : MonoBehaviour
         int minY = -mapHeight / 2;
         int maxY = minY + mapHeight - 1;
 
-        for (int i = 0; i < edgeBuffer.Length; i++)
+        List<int> edges = new List<int> { 0, 1, 2, 3 };
+
+        for (int i = 0; i < edges.Count; i++)
         {
-            int temp = edgeBuffer[i];
-            int randIndex = Random.Range(i, edgeBuffer.Length);
-            edgeBuffer[i] = edgeBuffer[randIndex];
-            edgeBuffer[randIndex] = temp;
+            int temp = edges[i];
+            int randIndex = Random.Range(i, edges.Count);
+            edges[i] = edges[randIndex];
+            edges[randIndex] = temp;
         }
 
         int spawnCount = Random.Range(2, 4);
@@ -89,7 +88,7 @@ public class RandomPathGenerator : MonoBehaviour
 
         for (int i = 0; i < spawnCount; i++)
         {
-            int edgeType = edgeBuffer[i];
+            int edgeType = edges[i];
             Vector2Int spawnPos = Vector2Int.zero;
 
             switch (edgeType)
@@ -107,29 +106,30 @@ public class RandomPathGenerator : MonoBehaviour
 
     private List<Vector2Int> GenerateRandomPath(Vector2Int start, Vector2Int end)
     {
-        List<Vector2Int> singlePath = new List<Vector2Int>(mapWidth + mapHeight);
+        List<Vector2Int> singlePath = new List<Vector2Int>();
         Vector2Int current = start;
 
         singlePath.Add(current);
         pathCells.Add(current);
-        visitedCells.Clear();
-        visitedCells.Add(current);
 
-        while (current != end)
+        int maxStep = mapWidth * mapHeight;
+        int step = 0;
+
+        while (current != end && step < maxStep)
         {
-            int neighborCount = GetNeighbors(current, neighborBuffer);
+            step++;
+            List<Vector2Int> neighbors = GetNeighbors(current);
             Vector2Int bestNext = current;
             float minCost = float.MaxValue;
-            int currentDistance = Mathf.Abs(current.x - end.x) + Mathf.Abs(current.y - end.y);
 
-            for (int i = 0; i < neighborCount; i++)
+            foreach (Vector2Int next in neighbors)
             {
-                Vector2Int next = neighborBuffer[i];
-                if (visitedCells.Contains(next)) continue;
+                if (singlePath.Contains(next) && next != end) continue;
+
                 float distance = Mathf.Abs(next.x - end.x) + Mathf.Abs(next.y - end.y);
-                if (distance >= currentDistance) continue;
                 float randomWeight = Random.Range(0f, noiseFactor);
                 float totalCost = distance + randomWeight;
+
                 if (totalCost < minCost)
                 {
                     minCost = totalCost;
@@ -137,17 +137,31 @@ public class RandomPathGenerator : MonoBehaviour
                 }
             }
 
-            if (bestNext == current) break;
+            if (bestNext == current)
+            {
+                float minDistance = float.MaxValue;
+                foreach (Vector2Int next in neighbors)
+                {
+                    float distance = Mathf.Abs(next.x - end.x) + Mathf.Abs(next.y - end.y);
+                    if (distance < minDistance)
+                    {
+                        minDistance = distance;
+                        bestNext = next;
+                    }
+                }
+            }
+
             current = bestNext;
-            visitedCells.Add(current);
             singlePath.Add(current);
             pathCells.Add(current);
+
+            if (current == end) break;
         }
 
         return singlePath;
     }
 
-    public bool CanPlaceNormalTower(Vector2Int cellPos, bool isWall, HashSet<Vector2Int> towerPositions)
+    public bool CanPlaceNormalTower(Vector2Int cellPos, bool isWall = false, HashSet<Vector2Int> towerPositions = null)
     {
         if (!isMainTowerPlaced) return false;
         if (cellPos == mainTowerCell) return false;
@@ -158,51 +172,160 @@ public class RandomPathGenerator : MonoBehaviour
         if (!inPath && isWall) return false;
         if (inPath) return false;
 
-        int minX = -mapWidth / 2;
-        int maxX = minX + mapWidth - 1;
-        int minY = -mapHeight / 2;
-        int maxY = minY + mapHeight - 1;
-
-        return cellPos.x >= minX && cellPos.x <= maxX && cellPos.y >= minY && cellPos.y <= maxY;
+        return InBounds(cellPos);
     }
 
-    private int GetNeighbors(Vector2Int cell, Vector2Int[] neighbors)
+    private List<Vector2Int> GetNeighbors(Vector2Int cell)
     {
-        int count = 0;
-        int minX = -mapWidth / 2;
-        int maxX = minX + mapWidth - 1;
-        int minY = -mapHeight / 2;
-        int maxY = minY + mapHeight - 1;
+        List<Vector2Int> neighbors = new List<Vector2Int>();
 
-        for (int i = 0; i < Directions.Length; i++)
+        foreach (Vector2Int d in Dirs)
         {
-            Vector2Int check = cell + Directions[i];
-            if (check.x >= minX && check.x <= maxX && check.y >= minY && check.y <= maxY)
-                neighbors[count++] = check;
+            Vector2Int check = cell + d;
+            if (InBounds(check))
+            {
+                neighbors.Add(check);
+            }
         }
-        return count;
+        return neighbors;
     }
 
     private void DrawPathOnTilemap()
     {
         if (pathTilemap == null || pathTile == null) return;
 
-        if (tilePositionBuffer.Length != pathCells.Count)
-        {
-            tilePositionBuffer = new Vector3Int[pathCells.Count];
-            tileBuffer = new TileBase[pathCells.Count];
-        }
-        int index = 0;
         foreach (Vector2Int cell in pathCells)
         {
-            tilePositionBuffer[index] = (Vector3Int)cell;
-            tileBuffer[index] = pathTile;
-            index++;
+            pathTilemap.SetTile((Vector3Int)cell, pathTile);
         }
-        pathTilemap.SetTiles(tilePositionBuffer, tileBuffer);
     }
 
-    // [추가] 셀 인덱스를 월드 좌표로 변환 (TowerPlacementManager 방식 동일 사용)[cite: 2]
+    // ───────────────────────── 허니팟 가지길 ─────────────────────────
+
+    public void RegisterHoneyPot(Vector2Int cell, HoneyPot pot)
+    {
+        pot.cell = cell;
+        pot.registered = true;
+        honeyPots[cell] = pot;
+        if (!BuildBranchToNearestRoad(cell))
+            Debug.LogWarning("허니팟에서 도로로 이어지는 빈 칸 경로가 없습니다. 유인이 작동하지 않습니다.");
+    }
+
+    public void UnregisterHoneyPot(Vector2Int cell)
+    {
+        honeyPots.Remove(cell);
+    }
+
+    bool InBounds(Vector2Int c)
+    {
+        int minX = -mapWidth / 2, maxX = minX + mapWidth - 1;
+        int minY = -mapHeight / 2, maxY = minY + mapHeight - 1;
+        return c.x >= minX && c.x <= maxX && c.y >= minY && c.y <= maxY;
+    }
+
+    // 가지길이 지나갈 수 있는 칸: 맵 안 + 도로 아님 + 본진 아님 + 타워 없음
+    bool IsFreeForBranch(Vector2Int c)
+    {
+        if (!InBounds(c) || pathCells.Contains(c) || c == mainTowerCell) return false;
+        var tpm = TowerPlacementManager.Instance;
+        return tpm == null || !tpm.IsCellOccupied(c);
+    }
+
+    bool BuildBranchToNearestRoad(Vector2Int honey)
+    {
+        if (pathCells.Count == 0) return false;
+
+        List<Vector2Int> branch = FindStraightBranch(honey) ?? FindBfsBranch(honey);
+        if (branch == null) return false;
+
+        foreach (Vector2Int c in branch) pathCells.Add(c);   // 도로 끝점은 이미 pathCells에 있음
+        DrawPathOnTilemap();
+        return true;
+    }
+
+    // 1순위: 상하좌우 한 방향으로 쭉 가서 도로에 닿는 가장 짧은 직선
+    List<Vector2Int> FindStraightBranch(Vector2Int honey)
+    {
+        List<Vector2Int> best = null;
+        foreach (Vector2Int d in Dirs)
+        {
+            var cells = new List<Vector2Int>();
+            Vector2Int cur = honey + d;
+            while (InBounds(cur))
+            {
+                if (pathCells.Contains(cur))                       // 도로 도달
+                {
+                    if (best == null || cells.Count < best.Count) best = cells;
+                    break;
+                }
+                if (!IsFreeForBranch(cur)) break;                  // 타워/본진에 막힘
+                cells.Add(cur);
+                cur += d;
+            }
+        }
+        return best;
+    }
+
+    // 2순위: 빈 칸만 통과하는 BFS (꺾이더라도 가장 가까운 도로까지)
+    List<Vector2Int> FindBfsBranch(Vector2Int honey)
+    {
+        var prev = new Dictionary<Vector2Int, Vector2Int> { [honey] = honey };
+        var q = new Queue<Vector2Int>();
+        q.Enqueue(honey);
+
+        while (q.Count > 0)
+        {
+            Vector2Int c = q.Dequeue();
+            foreach (Vector2Int d in Dirs)
+            {
+                Vector2Int n = c + d;
+                if (prev.ContainsKey(n) || !InBounds(n)) continue;
+
+                if (pathCells.Contains(n))                          // 도로 발견 -> 역추적
+                {
+                    var cells = new List<Vector2Int>();
+                    for (Vector2Int p = c; p != honey; p = prev[p]) cells.Add(p);
+                    cells.Reverse();
+                    return cells;
+                }
+                if (!IsFreeForBranch(n)) continue;
+                prev[n] = c;
+                q.Enqueue(n);
+            }
+        }
+        return null;   // 막혀서 연결 불가
+    }
+
+    // 도로 그래프 위 BFS (goal이 허니팟 칸이면 pathCells 밖이어도 허용)
+    public List<Vector2Int> FindRoute(Vector2Int start, Vector2Int goal)
+    {
+        var prev = new Dictionary<Vector2Int, Vector2Int> { [start] = start };
+        var q = new Queue<Vector2Int>();
+        q.Enqueue(start);
+        while (q.Count > 0)
+        {
+            Vector2Int c = q.Dequeue();
+            if (c == goal) break;
+            foreach (Vector2Int d in Dirs)
+            {
+                Vector2Int n = c + d;
+                if (prev.ContainsKey(n)) continue;
+                if (!pathCells.Contains(n) && n != goal) continue;
+                prev[n] = c;
+                q.Enqueue(n);
+            }
+        }
+        if (!prev.ContainsKey(goal)) return null;
+
+        var route = new List<Vector2Int>();
+        for (Vector2Int c = goal; ; c = prev[c]) { route.Add(c); if (c == start) break; }
+        route.Reverse();
+        return route;
+    }
+
+    // ───────────────────────── 좌표 변환 ─────────────────────────
+
+    // 셀 인덱스를 월드 좌표로 변환 (TowerPlacementManager와 동일한 방식)
     public Vector3 GetWorldPosFromCell(Vector2Int cell)
     {
         float W = tileWidth;
@@ -212,5 +335,14 @@ public class RandomPathGenerator : MonoBehaviour
         float snapY = (cell.x + cell.y + 1f) * (H * 0.5f);
 
         return new Vector3(snapX, snapY, 0f);
+    }
+
+    // 월드 -> 셀 (GetWorldPosFromCell의 역변환)
+    public Vector2Int GetCellFromWorldPos(Vector3 pos)
+    {
+        float W = tileWidth, H = W * 0.5f;
+        float a = pos.x / (W * 0.5f);           // x - y
+        float b = pos.y / (H * 0.5f) - 1f;      // x + y
+        return new Vector2Int(Mathf.RoundToInt((a + b) * 0.5f), Mathf.RoundToInt((b - a) * 0.5f));
     }
 }

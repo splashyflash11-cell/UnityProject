@@ -13,6 +13,7 @@ public class Projectile : MonoBehaviour
     private float debuffDuration;
     private Tower owner;   // 발사한 타워 (통계 집계용)
     SpriteRenderer spriteRenderer;
+    [HideInInspector] public HoneyPot lureSource;
 
     [Header("장판 (디버프 타워용)")]
     [SerializeField] DamageField fieldPrefab;   // 인스펙터에서 장판 프리팹 연결
@@ -84,6 +85,8 @@ public class Projectile : MonoBehaviour
                 return;
             }
         }
+
+        if (enemy != null && lureSource != null) enemy.Lure(lureSource);
 
         if (isDebuffTower && fieldPrefab != null)
         {
