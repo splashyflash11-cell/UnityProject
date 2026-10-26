@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 567086405611782096}
   - component: {fileID: 1253264676848131976}
   - component: {fileID: -4350008622973338777}
+  - component: {fileID: -6498366250262082994}
   m_Layer: 6
   m_Name: TD_HoneyPot
   m_TagString: Untagged
@@ -106,8 +107,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Tower
   data: {fileID: 11400000, guid: 780b29479b0c98849ad94b56ddd92f39, type: 2}
+  maxHp: 100
+  currentHp: 0
   projectilePrefab: {fileID: 7494450689790707746, guid: 0be4e20ac828aaf45977ec2aebc681a9, type: 3}
   firePoint: {fileID: 0}
+  warningIconOffset: 0.2
+  isHacked: 0
+  cell: {x: 0, y: 0}
 --- !u!58 &-4350008622973338777
 CircleCollider2D:
   m_ObjectHideFlags: 0
@@ -144,3 +150,18 @@ CircleCollider2D:
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0.25}
   m_Radius: 0.2
+--- !u!114 &-6498366250262082994
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5018845701351403033}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f7cc5eea9cb7d2a428bdce4cd11778f2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HoneyPot
+  maxHp: 500
+  cell: {x: 0, y: 0}
+  registered: 0
