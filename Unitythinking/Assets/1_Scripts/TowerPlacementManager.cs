@@ -47,6 +47,11 @@ public class TowerPlacementManager : MonoBehaviour
         {
             previewObject.transform.position = snappedPos;
 
+            bool flip = isWall && !isPlacingMainTower
+            && RandomPathGenerator.Instance != null
+            && RandomPathGenerator.Instance.IsRoadAlongY(cellIndex);
+            if (previewRenderer != null && isWall) previewRenderer.flipX = flip;
+
             // 배치 조건 검사
             bool isValid = false;
             if (isPlacingMainTower)
@@ -88,6 +93,12 @@ public class TowerPlacementManager : MonoBehaviour
                 GameObject placedTower = Instantiate(currentTowerPrefab, snappedPos, Quaternion.identity);
                 Tower placedTowerComp = placedTower.GetComponent<Tower>();
                 if (placedTowerComp != null) placedTowerComp.cell = cellIndex;   // 판매/제거 시 셀 해제용
+                
+                if (isWall)
+                {
+                    SpriteRenderer sr = placedTower.GetComponent<SpriteRenderer>();
+                    if (sr != null) sr.flipX = flip;
+                }
 
                 TowerData towerData = currentTowerPrefab.GetComponent<Tower>().data;
                 GameManager.Instance.ChangeCpu(-towerData.useCpu); // CPU 차감

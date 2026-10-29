@@ -34,7 +34,13 @@ public class RandomPathGenerator : MonoBehaviour
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
     }
-
+    // 길이 y축 방향으로만 이어져 있으면 true (교차로는 false)
+    public bool IsRoadAlongY(Vector2Int c)
+    {
+        bool alongX = pathCells.Contains(c + Vector2Int.left) || pathCells.Contains(c + Vector2Int.right);
+        bool alongY = pathCells.Contains(c + Vector2Int.up) || pathCells.Contains(c + Vector2Int.down);
+        return alongY && !alongX;
+    }
     public void OnPlaceMainTower(Vector2Int towerCell)
     {
         mainTowerCell = towerCell;

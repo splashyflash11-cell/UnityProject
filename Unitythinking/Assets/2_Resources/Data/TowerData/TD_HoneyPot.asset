@@ -18,7 +18,7 @@ MonoBehaviour:
   attackInterval: 3
   useCpu: 500
   useRam: 3
-  projectileSpeed: 1
+  projectileSpeed: 5
   isDebuffTower: 1
   debuffType: 0
   debuffValue: -5

@@ -15,11 +15,11 @@ MonoBehaviour:
   towerName: FireWall
   attackDamage: 100
   attackRange: 0
-  attackInterval: 0
+  attackInterval: 1
   useCpu: 100
   useRam: 1
   projectileSpeed: 0
   isDebuffTower: 1
   debuffType: 1
-  debuffValue: 0
-  debuffDuration: 0
+  debuffValue: 0.3
+  debuffDuration: 3

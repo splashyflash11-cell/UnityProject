@@ -87,7 +87,7 @@ public class Enemy : MonoBehaviour
         if (!isInitialized || waypoints == null) return;
 
         targetPosition = waypoints[currentWaypointIndex];
-        transform.position = Vector3.MoveTowards(transform.position, targetPosition, moveSpeed * Time.deltaTime);
+        transform.position = Vector3.MoveTowards(transform.position, targetPosition, CurrentSpeed() * Time.deltaTime);
         spriteRenderer.sortingOrder = (int)-transform.position.y;
 
         if (Vector3.Distance(transform.position, targetPosition) < 0.05f)
@@ -254,6 +254,36 @@ public class Enemy : MonoBehaviour
         currentWaypointIndex = 0;
     }
 
+    // ── 슬로우 / 정지 ──
+    private int slowStacks;
+    private float slowRatio;
+    private float slowExpireTime;
+    private float stoppedUntil;
+
+    public int SlowStacks => slowStacks;
+    public bool IsStopped => Time.time < stoppedUntil;
+
+    public void ApplySlow(float ratioPerStack, float duration, int stopStacks, float stopDuration)
+    {
+        if (isDead || IsStopped) return;
+
+        slowStacks++;
+        slowRatio = Mathf.Abs(ratioPerStack);
+        slowExpireTime = Time.time + duration;
+
+        if (slowStacks >= stopStacks)
+        {
+            stoppedUntil = Time.time + stopDuration;
+            slowStacks = 0;
+        }
+    }
+
+    private float CurrentSpeed()
+    {
+        if (IsStopped) return 0f;
+        if (slowStacks > 0 && Time.time >= slowExpireTime) slowStacks = 0;   // 지속시간 끝나면 스택 소멸
+        return moveSpeed * Mathf.Clamp01(1f - slowStacks * slowRatio);
+    }
     void Die()
     {
         isDead = true;

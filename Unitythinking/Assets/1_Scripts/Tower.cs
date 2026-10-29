@@ -22,7 +22,7 @@ public class Tower : MonoBehaviour
     private SpriteRenderer spriteRenderer;
 
     public bool isHacked = false;
-
+    private Firewall firewall;
     // ── 배치 정보 / 통계 ──
     [HideInInspector] public Vector2Int cell;   // 설치된 셀 (TowerPlacementManager 가 설정)
     private float placedTime;
@@ -49,6 +49,7 @@ public class Tower : MonoBehaviour
 
     private void Start()
     {
+        firewall = GetComponent<Firewall>();
         currentHp = maxHp;
         placedTime = Time.time;
         spriteRenderer = GetComponent<SpriteRenderer>();
@@ -61,6 +62,7 @@ public class Tower : MonoBehaviour
 
     private void Update()
     {
+        if (firewall != null) return;
         // 랜섬웨어에 감염되면 복호화 전까지 공격하지 않는다
         if (isLocked)
         {

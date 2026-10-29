@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 3962850351478184747}
   - component: {fileID: 3288507766622142781}
   - component: {fileID: 9051259631849805799}
+  - component: {fileID: -8328093437751920101}
   m_Layer: 6
   m_Name: TD_FireWall
   m_TagString: Wall
@@ -106,8 +107,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Tower
   data: {fileID: 11400000, guid: 5ab6f986b0c801f49bf18cf38ef244a2, type: 2}
-  projectilePrefab: {fileID: 5822942679059888379, guid: fb86140e90dc20949981d4fa4d304eee, type: 3}
+  maxHp: 100
+  currentHp: 0
+  projectilePrefab: {fileID: 0}
   firePoint: {fileID: 0}
+  warningIconOffset: 0.2
+  isHacked: 0
+  cell: {x: 0, y: 0}
 --- !u!58 &9051259631849805799
 CircleCollider2D:
   m_ObjectHideFlags: 0
@@ -144,3 +150,18 @@ CircleCollider2D:
   m_CompositeOrder: 0
   m_Offset: {x: -0.07499999, y: 0.14999999}
   m_Radius: 0.2
+--- !u!114 &-8328093437751920101
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7527359149062086754}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 54c00ce63a2301e49aebd4254967ae69, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Firewall
+  detectRadius: 0.6
+  stopStacks: 3
+  stopDuration: 2
