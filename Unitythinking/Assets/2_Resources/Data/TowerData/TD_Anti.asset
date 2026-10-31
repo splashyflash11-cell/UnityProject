@@ -15,7 +15,7 @@ MonoBehaviour:
   towerName: AntiVirus
   attackDamage: 100
   attackRange: 3.5
-  attackInterval: 0.5
+  attackInterval: 0.75
   useCpu: 200
   useRam: 5
   projectileSpeed: 5

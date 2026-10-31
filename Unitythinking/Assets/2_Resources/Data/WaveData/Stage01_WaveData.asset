@@ -17,34 +17,34 @@ MonoBehaviour:
     enemySpawnList:
     - enemyName: Ddos
       enemyPrefab: {fileID: 7051123224168577051, guid: 3bdbbaa7454602e46849d254902a6200, type: 3}
-      spawnCount: 3
-      spawnInterval: 3
+      spawnCount: 20
+      spawnInterval: 1
   - waveName: Wave 2
     enemySpawnList:
     - enemyName: Ddos
       enemyPrefab: {fileID: 7051123224168577051, guid: 3bdbbaa7454602e46849d254902a6200, type: 3}
-      spawnCount: 3
-      spawnInterval: 3
+      spawnCount: 10
+      spawnInterval: 1.5
     - enemyName: Trojan
       enemyPrefab: {fileID: 7051123224168577051, guid: b62a343e163eb1e4c8bb17caa97253cb, type: 3}
       spawnCount: 1
-      spawnInterval: 4
+      spawnInterval: 2
   - waveName: Wave 3
     enemySpawnList:
     - enemyName: Ddos
       enemyPrefab: {fileID: 7051123224168577051, guid: 3bdbbaa7454602e46849d254902a6200, type: 3}
-      spawnCount: 2
-      spawnInterval: 2
+      spawnCount: 15
+      spawnInterval: 1
     - enemyName: Trojan
       enemyPrefab: {fileID: 7051123224168577051, guid: b62a343e163eb1e4c8bb17caa97253cb, type: 3}
-      spawnCount: 2
+      spawnCount: 5
       spawnInterval: 3
   - waveName: Wave 4
     enemySpawnList:
     - enemyName: Trojan
       enemyPrefab: {fileID: 7051123224168577051, guid: b62a343e163eb1e4c8bb17caa97253cb, type: 3}
-      spawnCount: 4
-      spawnInterval: 4
+      spawnCount: 5
+      spawnInterval: 3
   - waveName: Boss Wave
     enemySpawnList:
     - enemyName: ZeroDay
@@ -53,36 +53,36 @@ MonoBehaviour:
       spawnInterval: 10
     - enemyName: Ddos
       enemyPrefab: {fileID: 7051123224168577051, guid: 3bdbbaa7454602e46849d254902a6200, type: 3}
-      spawnCount: 5
-      spawnInterval: 2
+      spawnCount: 25
+      spawnInterval: 1
     - enemyName: Trojan
       enemyPrefab: {fileID: 7051123224168577051, guid: b62a343e163eb1e4c8bb17caa97253cb, type: 3}
-      spawnCount: 3
-      spawnInterval: 4
+      spawnCount: 10
+      spawnInterval: 2
   - waveName: Wave6
     enemySpawnList:
     - enemyName: Ransomware
       enemyPrefab: {fileID: 7051123224168577051, guid: 52e040b7e8b447849961d087c220c495, type: 3}
-      spawnCount: 3
-      spawnInterval: 7
+      spawnCount: 1
+      spawnInterval: 3
     - enemyName: Ddos
       enemyPrefab: {fileID: 7051123224168577051, guid: 3bdbbaa7454602e46849d254902a6200, type: 3}
-      spawnCount: 7
-      spawnInterval: 2
+      spawnCount: 20
+      spawnInterval: 1
     - enemyName: Trojan
       enemyPrefab: {fileID: 7051123224168577051, guid: b62a343e163eb1e4c8bb17caa97253cb, type: 3}
-      spawnCount: 5
-      spawnInterval: 3
+      spawnCount: 7
+      spawnInterval: 1
   - waveName: Wave7
     enemySpawnList:
     - enemyName: Ransomware
       enemyPrefab: {fileID: 7051123224168577051, guid: 52e040b7e8b447849961d087c220c495, type: 3}
       spawnCount: 3
-      spawnInterval: 5
+      spawnInterval: 3
     - enemyName: Ddos
       enemyPrefab: {fileID: 7051123224168577051, guid: 3bdbbaa7454602e46849d254902a6200, type: 3}
-      spawnCount: 10
-      spawnInterval: 3
+      spawnCount: 30
+      spawnInterval: 0.5
     - enemyName: ZeroDay
       enemyPrefab: {fileID: 7051123224168577051, guid: e5fa0d222efd6f34387af7953cffb209, type: 3}
       spawnCount: 2
@@ -95,11 +95,11 @@ MonoBehaviour:
       spawnInterval: 3
     - enemyName: Ddos
       enemyPrefab: {fileID: 7051123224168577051, guid: 3bdbbaa7454602e46849d254902a6200, type: 3}
-      spawnCount: 10
+      spawnCount: 20
       spawnInterval: 1
     - enemyName: Trojan
       enemyPrefab: {fileID: 7051123224168577051, guid: b62a343e163eb1e4c8bb17caa97253cb, type: 3}
-      spawnCount: 10
+      spawnCount: 5
       spawnInterval: 3
   - waveName: Wave9
     enemySpawnList:
@@ -116,15 +116,15 @@ MonoBehaviour:
     - enemyName: Ransomware
       enemyPrefab: {fileID: 7051123224168577051, guid: 52e040b7e8b447849961d087c220c495, type: 3}
       spawnCount: 5
-      spawnInterval: 4
+      spawnInterval: 3
     - enemyName: ZeroDay
       enemyPrefab: {fileID: 7051123224168577051, guid: e5fa0d222efd6f34387af7953cffb209, type: 3}
       spawnCount: 3
       spawnInterval: 5
     - enemyName: Ddos
       enemyPrefab: {fileID: 7051123224168577051, guid: 3bdbbaa7454602e46849d254902a6200, type: 3}
-      spawnCount: 20
-      spawnInterval: 1
+      spawnCount: 50
+      spawnInterval: 0.5
     - enemyName: Trojan
       enemyPrefab: {fileID: 7051123224168577051, guid: b62a343e163eb1e4c8bb17caa97253cb, type: 3}
       spawnCount: 10
@@ -132,4 +132,4 @@ MonoBehaviour:
     - enemyName: APT
       enemyPrefab: {fileID: 7051123224168577051, guid: 1784b65a89484524a8660b6d90da7e68, type: 3}
       spawnCount: 1
-      spawnInterval: 20
+      spawnInterval: 25

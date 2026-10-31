@@ -17,11 +17,15 @@ MonoBehaviour:
   enemyPrefab: {fileID: 0}
   maxHealth: 10000
   moveSpeed: 0.1
-  cpuReward: 2500
+  cpuReward: 3000
   attackDamage: 50
   isStealth: 0
   isInvulnerable: 1
   ramReduction: 0
+  hacking: 0
+  infectRadius: 6
+  infectCount: 2
+  decryptCost: 100
   enemySprite:
   - {fileID: 21300000, guid: 9e9b35ed23b9f6b489882d6e7bc44606, type: 3}
   - {fileID: 21300000, guid: 17cf8c9b3fa0a6644b88e9ae56a888e6, type: 3}

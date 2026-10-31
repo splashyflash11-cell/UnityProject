@@ -107,7 +107,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Tower
   data: {fileID: 11400000, guid: 780b29479b0c98849ad94b56ddd92f39, type: 2}
-  maxHp: 100
+  maxHp: 1
   currentHp: 0
   projectilePrefab: {fileID: 7494450689790707746, guid: 0be4e20ac828aaf45977ec2aebc681a9, type: 3}
   firePoint: {fileID: 0}

@@ -249,7 +249,7 @@ MonoBehaviour:
   - {fileID: 7862951092186764325, guid: 1bcc86e886cab0047bea3ecc77b9d39c, type: 3}
   cpuValue: 500
   ramValue: 0
-  maxRamValue: 100
+  maxRamValue: 50
   mainTowerHealthValue: 100
   defaultServerHP: 500
   currentServerHP: 0

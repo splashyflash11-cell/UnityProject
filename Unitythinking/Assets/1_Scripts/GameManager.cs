@@ -124,10 +124,6 @@ public class GameManager : MonoBehaviour
 
     
     
-    
-    
-    
-    
     public void OnClickTowerPlacingButton(int btnID, bool isMainTower)
     {
         int index = btnID;
